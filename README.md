@@ -16,17 +16,17 @@ Authentication: JWT (JSON Web Tokens) & Bcrypt hashing
 
 📂 Project Structure
 
-├── client/                # React Frontend
-├── server/                # Node.js Backend & API
-│   ├── config/            # DB Connection Pool
-│   ├── controllers/       # Business Logic (The Brain)
-│   ├── models/            # Normalized SQL Queries (3NF)
-│   ├── routes/            # API Endpoints (URLs)
-│   ├── middleware/        # JWT & Admin Security Guards
-│   ├── utils/             # Helpers (Time Bucketing, Token Gen)
-│   └── .env.example       # Secret keys template
-├── docs/                  # Architecture & Design Diagrams
-└── database/
+    ├── client/                # React Frontend
+    ├── server/                # Node.js Backend & API
+    │   ├── config/            # DB Connection Pool
+    │   ├── controllers/       # Business Logic (The Brain)
+    │   ├── models/            # Normalized SQL Queries (3NF)
+    │   ├── routes/            # API Endpoints (URLs)
+    │   ├── middleware/        # JWT & Admin Security Guards
+    │   ├── utils/             # Helpers (Time Bucketing, Token Gen)
+    │   └── .env.example       # Secret keys template
+    ├── docs/                  # Architecture & Design Diagrams
+    └── database/
     └── init.sql           # Master 3NF Schema Script
 
 
