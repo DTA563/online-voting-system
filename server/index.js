@@ -2,25 +2,63 @@ const express = require('express');
 const cors = require('cors');
 require('dotenv').config();
 
+// Initialize database connection
+const db = require('./config/db');
+
+// Route Imports
+const authRoutes = require('./routes/authRoutes');
+const voteRoutes = require('./routes/voteRoutes');
+const adminRoutes = require('./routes/adminRoutes');
+const resultRoutes = require('./routes/resultRoutes');
+
 const app = express();
 const PORT = process.env.PORT || 5000;
 
-// Middleware
-// cors() allows your React frontend to communicate with this API
+//  GLOBAL MIDDLEWARE 
 app.use(cors());
-// express.json() allows the server to handle JSON data in requests
-app.use(express.json());
+app.use(express.json()); // Parses incoming JSON requests
 
-// Basic Route for testing
+//  ROUTE MOUNTING 
+// All authentication logic (Login/Register)
+app.use('/api/auth', authRoutes);
+
+// Secure voting logic (Casting ballots)
+app.use('/api/votes', voteRoutes);
+
+// Management & Administration (Elections, Candidates, Roles, Registry)
+app.use('/api/admin', adminRoutes);
+
+// Real-time Turnout & Final Results
+app.use('/api/results', resultRoutes);
+
+//  HEALTH CHECK 
 app.get('/', (req, res) => {
     res.json({ 
-        status: "success",
-        message: "Voting System API is running...",
-        version: "1.0.0"
+        status: "success", 
+        message: "Online Voting System API (v1.0.6) is fully operational.",
+        timestamp: new Date().toISOString()
     });
 });
 
-// Start Server
+//  GLOBAL ERROR HANDLER 
+// Catches any unhandled errors in the request cycle
+app.use((err, req, res, next) => {
+    console.error('Server Error:', err.stack);
+    res.status(500).json({ 
+        message: "An internal server error occurred.",
+        error: process.env.NODE_ENV === 'development' ? err.message : {} 
+    });
+});
+
+//  404 HANDLER 
+app.use((req, res) => {
+    res.status(404).json({ message: "API Route not found." });
+});
+
+//  SERVER INITIALIZATION 
 app.listen(PORT, () => {
-    console.log(`Server is running on port ${PORT}`);
+    console.log(`
+     SERVER RUNNING ON PORT: ${PORT}
+     ENVIRONMENT: ${process.env.NODE_ENV || 'development'}
+    `);
 });
