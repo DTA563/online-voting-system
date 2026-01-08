@@ -43,11 +43,13 @@ These files define the URLs that the React frontend will call.
 * **electionRoutes.js**: Endpoints like /api/elections (GET) and /api/elections/create (POST).  
 * **candidateRoutes.js**: Endpoints like /api/candidates/:position\_id.  
 * **voteRoutes.js**: The secure endpoint: /api/votes/cast.
+* **adminRoutes.js**: Endpoints for election management, protected by adminMiddleware 
 
 ## **📁 5\. /middleware (Security Checks)**
 
 * **authMiddleware.js**: The "Security Guard." It intercept requests to routes like /api/votes/cast to verify the JWT.  
 * **adminMiddleware.js**: Checks the role field in the JWT to ensure only Admins can access /api/elections/create.
+* **voteMiddleware.js**: Ensures only Voters can participate in elections.
 
 ## **📁 6\. /utils (Utility Helpers)**
 
