@@ -1,24 +1,28 @@
 import { Outlet, useLocation } from 'react-router-dom';
 import { Navbar } from './Navbar';
+import { Footer } from './Footer'; 
 
 export function MainLayout() {
   const location = useLocation();
   const isLandingPage = location.pathname === '/';
 
   return (
-    <div className="min-h-screen bg-gray-50">
-      {/* Only show navbar on non-landing pages, or make it transparent on landing */}
-      {!isLandingPage && <Navbar />}
+    // 2. Add 'flex flex-col' to the wrapper. 
+    // This allows us to use Flexbox to space out the Navbar, Main, and Footer.
+    <div className="min-h-screen bg-black text-white font-sans selection:bg-blue-500/30 flex flex-col">
       
-      {isLandingPage ? (
-        <main>
-          <Outlet />
-        </main>
-      ) : (
-        <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-          <Outlet />
-        </main>
-      )}
+      {/* Navbar sits at the top (fixed position handled inside Navbar component) */}
+      <Navbar />
+      
+      {/* 3. Add 'flex-grow'. 
+         This forces the <main> section to expand and fill all available empty space,
+         effectively pushing the Footer to the very bottom of the screen.
+      */}
+      <main className={`relative w-full flex-grow ${isLandingPage ? '' : 'pt-24'}`}>
+        <Outlet />
+      </main>
+
+      <Footer />
     </div>
   );
 }

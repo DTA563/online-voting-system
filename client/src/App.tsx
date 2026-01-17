@@ -4,6 +4,7 @@ import { MainLayout, ProtectedRoute } from './components';
 import { 
   LandingPage, 
   LoginPage, 
+  RegisterPage, 
   VotingBoothPage, 
   VoteSuccessPage, 
   ResultsPage,
@@ -19,22 +20,49 @@ function AppRoutes() {
 
   return (
     <Routes>
-      {/* Main Layout wraps all routes */}
+      {/* --- PUBLIC ROUTES WITHOUT NAVBAR/LAYOUT --- */}
+      
+      {/* Login Page */}
+      <Route 
+        path="/login" 
+        element={
+          isAuthenticated ? (
+            <Navigate to={isAdmin ? '/admin' : '/vote'} replace />
+          ) : (
+            <LoginPage />
+          )
+        } 
+      />
+
+      {/* Register Page (Added Here) */}
+      <Route 
+        path="/register" 
+        element={
+          isAuthenticated ? (
+            <Navigate to={isAdmin ? '/admin' : '/vote'} replace />
+          ) : (
+            <RegisterPage />
+          )
+        } 
+      />
+
+      {/* --- MAIN APP ROUTES WITH NAVBAR/LAYOUT --- */}
       <Route element={<MainLayout />}>
-        {/* Public Routes */}
+        
+        {/* Public Landing Page */}
         <Route path="/" element={<LandingPage />} />
-        <Route 
-          path="/login" 
+
+        {/* Protected Routes for All Authenticated Users */}
+        <Route
+          path="/results"
           element={
-            isAuthenticated ? (
-              <Navigate to={isAdmin ? '/admin' : '/vote'} replace />
-            ) : (
-              <LoginPage />
-            )
-          } 
+            <ProtectedRoute>
+              <ResultsPage />
+            </ProtectedRoute>
+          }
         />
 
-        {/* Voter Routes */}
+        {/* Voter-Specific Routes */}
         <Route
           path="/vote"
           element={
@@ -48,14 +76,6 @@ function AppRoutes() {
           element={
             <ProtectedRoute allowedRoles={['voter']}>
               <VoteSuccessPage />
-            </ProtectedRoute>
-          }
-        />
-        <Route
-          path="/results"
-          element={
-            <ProtectedRoute>
-              <ResultsPage />
             </ProtectedRoute>
           }
         />
@@ -102,7 +122,7 @@ function AppRoutes() {
           }
         />
 
-        {/* Catch all - 404 */}
+        {/* 404 Page (with Navbar) */}
         <Route
           path="*"
           element={

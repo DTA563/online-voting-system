@@ -6,7 +6,7 @@ export interface User {
 }
 
 export interface LoginCredentials {
-  user_id: string;
+  userId: string;  // ✅ Changed from user_id to userId
   password: string;
 }
 
