@@ -151,18 +151,19 @@ export function LandingPage() {
               This is SmartBallot. A secure, transparent, and auditable e-voting platform designed for institutional elections. Empowering democracy through technology.
             </p>
             
+            {/* --- UPDATED BUTTONS --- */}
             <div className="flex flex-col sm:flex-row gap-5 animate-fade-in-up delay-300">
-              <Link 
-                to="/register" 
+              <button 
+                onClick={() => smoothScrollTo('features')}
                 className="bg-gradient-to-r from-blue-500 to-cyan-400 hover:from-blue-600 hover:to-cyan-500 text-white px-8 py-4 rounded-xl text-lg font-semibold transition-all shadow-xl hover:shadow-2xl backdrop-blur-sm border border-blue-400/30 text-center"
               >
-                Get Started
-              </Link>
+                Features
+              </button>
               <button 
-                onClick={() => smoothScrollTo('features')} 
+                onClick={() => smoothScrollTo('how-it-works')} 
                 className="backdrop-blur-sm bg-white/10 hover:bg-white/20 border border-white/20 text-white px-8 py-4 rounded-xl text-lg font-semibold transition-all hover:border-white/30 text-center"
               >
-                Learn More
+                How It Works
               </button>
             </div>
           </div>
@@ -305,7 +306,6 @@ export function LandingPage() {
                 </div>
                 <h3 className="text-2xl font-semibold mb-4 text-white">{feature.title}</h3>
                 <p className="text-gray-300 leading-relaxed font-mono text-sm">
-                  {/* UPDATED: Typewriter Component applied here */}
                   <TypewriterText text={feature.description} speed={25} />
                 </p>
               </div>
