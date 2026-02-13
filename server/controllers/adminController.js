@@ -166,3 +166,45 @@ exports.addCandidate = async (req, res) => {
         res.status(500).json({ message: "Error adding candidate", error: err.message });
     }
 };
+
+/**
+ * getDashboardStats
+ * Returns aggregated statistics for the admin dashboard.
+ */
+exports.getDashboardStats = async (req, res) => {
+    try {
+        // 1. User Stats
+        const [roleCounts] = await db.query('SELECT role, COUNT(*) as count FROM users GROUP BY role');
+        const [pendingCount] = await db.query('SELECT COUNT(*) as count FROM users WHERE is_verified = 0');
+        
+        const userStats = roleCounts.reduce((acc, row) => {
+            acc[row.role] = row.count;
+            return acc;
+        }, {});
+
+        // 2. Election Stats
+        const [electionCounts] = await db.query(`
+            SELECT 
+                COUNT(*) as total,
+                SUM(CASE WHEN is_published = 1 AND start_date <= NOW() AND end_date >= NOW() THEN 1 ELSE 0 END) as active,
+                SUM(CASE WHEN end_date < NOW() THEN 1 ELSE 0 END) as completed
+            FROM elections
+        `);
+
+        res.json({
+            users: {
+                by_role: userStats,
+                pending: pendingCount[0].count
+            },
+            elections: {
+                total: electionCounts[0].total,
+                active: electionCounts[0].active || 0, // Handle null if no elections
+                completed: electionCounts[0].completed || 0
+            }
+        });
+
+    } catch (err) {
+        console.error("Stats Error:", err);
+        res.status(500).json({ message: "Error fetching dashboard stats", error: err.message });
+    }
+};

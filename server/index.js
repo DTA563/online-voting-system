@@ -10,6 +10,7 @@ const authRoutes = require('./routes/authRoutes');
 const voteRoutes = require('./routes/voteRoutes');
 const adminRoutes = require('./routes/adminRoutes');
 const resultRoutes = require('./routes/resultRoutes');
+const userRoutes = require('./routes/userRoutes');
 
 const app = express();
 const PORT = process.env.PORT || 5000;
@@ -27,6 +28,9 @@ app.use('/api/votes', voteRoutes);
 
 // Management & Administration (Elections, Candidates, Roles, Registry)
 app.use('/api/admin', adminRoutes);
+
+// User Management (Verification, Deletion)
+app.use('/api/users', userRoutes);
 
 // Real-time Turnout & Final Results
 app.use('/api/results', resultRoutes);

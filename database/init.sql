@@ -22,6 +22,7 @@ CREATE TABLE users (
     password_hash VARCHAR(255) NOT NULL,
     role ENUM('voter', 'admin', 'super_admin') DEFAULT 'voter',
     status ENUM('active', 'deactivated') DEFAULT 'active',
+    is_verified BOOLEAN DEFAULT FALSE,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 ) ENGINE=InnoDB;
 

@@ -1,6 +1,7 @@
 const express = require('express');
 const router = express.Router();
 const adminController = require('../controllers/adminController');
+const superAdminController = require('../controllers/superAdminController');
 const authMiddleware = require('../middleware/authMiddleware');
 const adminMiddleware = require('../middleware/adminMiddleware');
 const superAdminMiddleware = require('../middleware/superAdminMiddleware');
@@ -19,7 +20,12 @@ router.post('/registry/register', authMiddleware, adminMiddleware, adminControll
 
 //  LEVEL 3: SUPER ADMIN ONLY 
 // High-risk system actions
+router.get('/stats', authMiddleware, superAdminMiddleware, adminController.getDashboardStats);
 router.patch('/users/manage', authMiddleware, superAdminMiddleware, adminController.manageUserRole);
 router.get('/logs', authMiddleware, superAdminMiddleware, adminController.getSystemLogs);
+
+// User Management (Super Admin)
+router.get('/users', authMiddleware, superAdminMiddleware, superAdminController.getAllUsers);
+router.post('/users/reset-password', authMiddleware, superAdminMiddleware, superAdminController.resetUserPassword);
 
 module.exports = router;
