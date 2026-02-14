@@ -10,6 +10,8 @@ const authRoutes = require('./routes/authRoutes');
 const voteRoutes = require('./routes/voteRoutes');
 const adminRoutes = require('./routes/adminRoutes');
 const resultRoutes = require('./routes/resultRoutes');
+const electionRoutes = require('./routes/electionRoutes');
+const candidateRoutes = require('./routes/candidateRoutes');
 
 const app = express();
 const PORT = process.env.PORT || 5000;
@@ -31,11 +33,17 @@ app.use('/api/admin', adminRoutes);
 // Real-time Turnout & Final Results
 app.use('/api/results', resultRoutes);
 
+// Election Route 
+app.use('/api/elections', electionRoutes);
+
+// Candidate Route
+app.use('/api/candidates', candidateRoutes);
+
 //  HEALTH CHECK 
 app.get('/', (req, res) => {
     res.json({ 
         status: "success", 
-        message: "Online Voting System API (v1.0.6) is fully operational.",
+        message: "Online Voting System API (v1.0.3) is fully operational.",
         timestamp: new Date().toISOString()
     });
 });
