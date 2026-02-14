@@ -27,11 +27,7 @@ export function VoterSidebar() {
 
   const navItems = [
     { label: 'Cast Vote', path: '/vote', icon: <Icons.Vote /> },
-<<<<<<< HEAD
     { label: 'Results', path: '/vote/results', icon: <Icons.Results /> },
-=======
-    { label: 'Results', path: '/results', icon: <Icons.Results /> },
->>>>>>> d69e0fa3276b3c8a8f131053e77cb28d22c69fdb
   ];
 
   return (

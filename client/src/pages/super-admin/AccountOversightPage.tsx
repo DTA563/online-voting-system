@@ -1,20 +1,6 @@
 import { useState, useEffect, useMemo } from 'react';
 import { adminApi } from '../../api';
-<<<<<<< HEAD
 import { User } from '../../types';
-=======
-import { LoadingScreen } from '../../components/ui';
-
-interface User {
-  user_id: string;
-  full_name: string;
-  role: 'voter' | 'admin' | 'super_admin';
-  status: 'active' | 'deactivated';
-  created_at: string;
-  last_login?: string;
-  is_verified?: number | boolean;
-}
->>>>>>> d69e0fa3276b3c8a8f131053e77cb28d22c69fdb
 
 const Icons = {
   Search: () => <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" /></svg>,
@@ -38,12 +24,8 @@ export function AccountOversightPage() {
 
   useEffect(() => {
     loadUsers();
-<<<<<<< HEAD
     const timer = setTimeout(() => setMounted(true), 100);
     return () => clearTimeout(timer);
-=======
-    setMounted(true);
->>>>>>> d69e0fa3276b3c8a8f131053e77cb28d22c69fdb
   }, []);
 
   const loadUsers = async () => {
@@ -99,7 +81,6 @@ export function AccountOversightPage() {
     pending: users.filter(u => !u.is_verified).length
   }), [users]);
 
-<<<<<<< HEAD
   // --- Loading Skeleton ---
   if (isLoading) {
     return (
@@ -118,8 +99,6 @@ export function AccountOversightPage() {
     );
   }
 
-=======
->>>>>>> d69e0fa3276b3c8a8f131053e77cb28d22c69fdb
 
 
   return (
