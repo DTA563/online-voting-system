@@ -1,16 +1,6 @@
 import { useState, useEffect, useMemo } from 'react';
 import { adminApi } from '../../api';
-import { LoadingScreen } from '../../components/ui';
-
-interface User {
-  user_id: string;
-  full_name: string;
-  role: 'voter' | 'admin' | 'super_admin';
-  status: 'active' | 'deactivated';
-  created_at: string;
-  last_login?: string;
-  is_verified?: number | boolean;
-}
+import { User } from '../../types';
 
 const Icons = {
   Search: () => <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" /></svg>,
@@ -34,7 +24,8 @@ export function AccountOversightPage() {
 
   useEffect(() => {
     loadUsers();
-    setMounted(true);
+    const timer = setTimeout(() => setMounted(true), 100);
+    return () => clearTimeout(timer);
   }, []);
 
   const loadUsers = async () => {
@@ -89,6 +80,24 @@ export function AccountOversightPage() {
     disabled: users.filter(u => u.status === 'deactivated').length,
     pending: users.filter(u => !u.is_verified).length
   }), [users]);
+
+  // --- Loading Skeleton ---
+  if (isLoading) {
+    return (
+      <div className="max-w-7xl mx-auto px-6 lg:px-8 py-8 space-y-8 animate-pulse">
+        <div className="space-y-3">
+          <div className="h-3 w-32 bg-zinc-800 rounded"></div>
+          <div className="h-8 w-64 bg-zinc-800 rounded"></div>
+          <div className="h-4 w-96 bg-zinc-800 rounded"></div>
+        </div>
+        <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+          {[1, 2, 3, 4].map(i => <div key={i} className="h-24 rounded-2xl bg-zinc-900/50 border border-white/5"></div>)}
+        </div>
+        <div className="h-16 rounded-2xl bg-zinc-900/50 border border-white/5"></div>
+        <div className="h-96 rounded-3xl bg-zinc-900/50 border border-white/5"></div>
+      </div>
+    );
+  }
 
 
 

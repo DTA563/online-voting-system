@@ -3,3 +3,4 @@ export { ManageElectionsPage } from './ManageElectionsPage';
 export { ManagePositionsPage } from './ManagePositionsPage';
 export { ManageCandidatesPage } from './ManageCandidatesPage';
 export { ManageVotersPage } from './ManageVotersPage';
+export { ResultsPage as AdminResultsPage } from './AdminResultsPage';

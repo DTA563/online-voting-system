@@ -48,4 +48,10 @@ export const electionsApi = {
   delete: async (id: number): Promise<void> => {
     await api.delete(`/elections/${id}`);
   },
+
+  // Admin: Upload voter registry for an election
+  uploadVoterRegistry: async (electionId: number, voterIds: string[]): Promise<{ message: string }> => {
+    const response = await api.post(`/elections/${electionId}/voter-registry`, { voterIds });
+    return response.data;
+  },
 };

@@ -1,4 +1,5 @@
 import { createContext, useContext, useState, useEffect, ReactNode } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { User, LoginCredentials } from '../types';
 import { authApi } from '../api';
 
@@ -7,92 +8,110 @@ interface AuthContextType {
   token: string | null;
   isAuthenticated: boolean;
   isLoading: boolean;
-  login: (credentials: LoginCredentials) => Promise<void>;
+  // login function accepts credentials AND an optional role check
+  login: (credentials: LoginCredentials, allowedRoles?: string[]) => Promise<User>;
   logout: () => void;
   isAdmin: boolean;
+  isSuperAdmin: boolean;
   isVoter: boolean;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
 // 🛠️ DEVELOPMENT SWITCH
-// Set this to 'true' if you want to skip the backend and use mock data.
-// Set this to 'false' to connect to the real API.
 const ENABLE_MOCK_AUTH = false; 
-
-// Only allow mocking if we are in Dev mode AND the switch is on
 const isMockingEnabled = import.meta.env.DEV && ENABLE_MOCK_AUTH;
 
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<User | null>(null);
   const [token, setToken] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(true);
+  const navigate = useNavigate();
 
   // Check for existing token on mount
   useEffect(() => {
-    const storedToken = localStorage.getItem('token');
-    const storedUser = localStorage.getItem('user');
+    const initializeAuth = () => {
+      const storedToken = localStorage.getItem('token');
+      const storedUser = localStorage.getItem('user');
 
-    if (storedToken && storedUser) {
-      setToken(storedToken);
-      setUser(JSON.parse(storedUser));
+      if (storedToken && storedUser) {
+        setToken(storedToken);
+        setUser(JSON.parse(storedUser));
+        setIsLoading(false);
+        return;
+      }
       setIsLoading(false);
-      return;
-    }
+    };
 
-    // ✅ DEVELOPMENT MODE: Auto-login as mock user
-    if (isMockingEnabled) {
-      console.log('🚀 Development mode: Auto-login enabled (Mock)');
-      
-      const mockUser: User = {
-        user_id: 'dev-admin-123',
-        full_name: 'Development Administrator',
-        role: 'voter', // Change to 'voter' to test voter pages
-      };
-      
-      const mockToken = 'dev-mock-token-' + Date.now();
-      
-      setToken(mockToken);
-      setUser(mockUser);
-      localStorage.setItem('token', mockToken);
-      localStorage.setItem('user', JSON.stringify(mockUser));
-      
-      setIsLoading(false);
-      return;
-    }
-
-    setIsLoading(false);
+    initializeAuth();
   }, []);
 
-  const login = async (credentials: LoginCredentials) => {
-    // ✅ DEVELOPMENT: Mock login
-    if (isMockingEnabled) {
-      console.log('🔧 Development login with:', credentials);
+  // Add this useEffect to handle automatic redirect on logout
+  useEffect(() => {
+    // Only redirect if not loading and user is not authenticated
+    if (!isLoading && !user && !token) {
+      // Check current path to avoid redirecting from public pages
+      const currentPath = window.location.pathname;
+      const publicPaths = ['/login', '/register', '/'];
       
-      const isAdminLogin = credentials.userId.toLowerCase().includes('admin');
-      const role = isAdminLogin ? 'admin' : 'voter';
-      
-      const mockUser: User = {
-        user_id: credentials.userId,
-        full_name: credentials.userId === 'admin' ? 'Administrator' : 'Test Voter',
-        role: role,
-      };
-      
-      const mockToken = 'dev-token-' + Date.now();
-      
-      setToken(mockToken);
-      setUser(mockUser);
-      localStorage.setItem('token', mockToken);
-      localStorage.setItem('user', JSON.stringify(mockUser));
-      return;
+      if (!publicPaths.includes(currentPath)) {
+        navigate('/login', { replace: true });
+      }
     }
+  }, [isLoading, user, token, navigate]);
+
+  const login = async (credentials: LoginCredentials, allowedRoles?: string[]): Promise<User> => {
     
-    // ✅ PRODUCTION: Real API
-    const response = await authApi.login(credentials);
-    setToken(response.token);
-    setUser(response.user);
-    localStorage.setItem('token', response.token);
-    localStorage.setItem('user', JSON.stringify(response.user));
+    // --- Mock Login Logic (Keep existing if you use it) ---
+    if (isMockingEnabled) {
+       // ... (your existing mock logic)
+       return {} as User;
+    }
+
+    try {
+      console.log("🔵 Attempting login...", credentials);
+      
+      const data = await authApi.login(credentials);
+
+      // 1. Check if token exists
+      if (!data || !data.token) {
+        throw new Error("Login failed: Server response is missing the token.");
+      }
+
+      // 2. Role Check (The "Bouncer")
+      if (allowedRoles && allowedRoles.length > 0 && !allowedRoles.includes(data.user.role)) {
+        console.warn(`⛔ Access Denied: User is ${data.user.role}, but allowed roles are: ${allowedRoles.join(', ')}.`);
+        throw new Error("Access Denied: You do not have permission to access this area.");
+      }
+
+      // 3. Success! Update State
+      setToken(data.token);
+      setUser(data.user);
+      
+      localStorage.setItem('token', data.token);
+      localStorage.setItem('user', JSON.stringify(data.user));
+
+      return data.user;
+
+    } catch (error: any) {
+      console.error("❌ Login Error:", error);
+
+      // ✅ NEW ERROR HANDLING LOGIC ✅
+      // If the server sends a response (404, 401, etc.)
+      if (error.response) {
+        const status = error.response.status;
+
+        // 404 = User Not Found
+        // 401 = Password Incorrect
+        if (status === 404 || status === 401) {
+          // We intentionally hide the specific detail for security (and to fix your UI issue)
+          throw new Error("Invalid credentials. Please check your ID and Password.");
+        }
+      }
+
+      // If it's a different error (like the "Access Denied" we threw above), pass it through.
+      throw error; 
+    }
   };
 
   const logout = () => {
@@ -100,10 +119,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     setUser(null);
     localStorage.removeItem('token');
     localStorage.removeItem('user');
-    
-    if (isMockingEnabled) {
-      console.log('🔄 Development: Logged out');
-    }
+    // Note: The useEffect above will handle the redirect automatically
   };
 
   const value: AuthContextType = {
@@ -114,6 +130,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     login,
     logout,
     isAdmin: user?.role === 'admin',
+    isSuperAdmin: user?.role === 'super_admin',
     isVoter: user?.role === 'voter',
   };
 

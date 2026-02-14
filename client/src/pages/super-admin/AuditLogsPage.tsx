@@ -1,6 +1,5 @@
 import { useState, useEffect, useMemo } from 'react';
 import { adminApi } from '../../api';
-import { LoadingScreen } from '../../components/ui';
 
 interface Log {
   id: number;
@@ -42,7 +41,8 @@ export function AuditLogsPage() {
 
   useEffect(() => {
     loadLogs();
-    setMounted(true);
+    const timer = setTimeout(() => setMounted(true), 100);
+    return () => clearTimeout(timer);
   }, []);
 
   const loadLogs = async () => {
@@ -99,6 +99,21 @@ export function AuditLogsPage() {
   const indexOfFirstLog = indexOfLastLog - logsPerPage;
   const currentLogs = filteredLogs.slice(indexOfFirstLog, indexOfLastLog);
   const totalPages = Math.ceil(filteredLogs.length / logsPerPage);
+
+  // --- Loading Skeleton ---
+  if (isLoading) {
+    return (
+      <div className="max-w-7xl mx-auto px-6 lg:px-8 py-8 space-y-8 animate-pulse">
+        <div className="space-y-3">
+          <div className="h-3 w-32 bg-zinc-800 rounded"></div>
+          <div className="h-8 w-64 bg-zinc-800 rounded"></div>
+          <div className="h-4 w-96 bg-zinc-800 rounded"></div>
+        </div>
+        <div className="h-16 rounded-2xl bg-zinc-900/50 border border-white/5"></div>
+        <div className="h-125 rounded-3xl bg-zinc-900/50 border border-white/5"></div>
+      </div>
+    );
+  }
 
 
 
@@ -254,7 +269,7 @@ export function AuditLogsPage() {
                 <span>PAGE {currentPage} OF {totalPages || 1}</span>
                 <button 
                   onClick={() => setCurrentPage(p => Math.min(totalPages, p + 1))}
-                  disabled={currentPage === totalPages}
+                  disabled={currentPage >= totalPages}
                   className="px-3 py-1.5 rounded bg-zinc-800 hover:bg-zinc-700 disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
                 >
                   Next

@@ -1,11 +1,11 @@
 import api from './axios';
-import { LoginCredentials, AuthResponse, ApiResponse } from '../types';
+import { LoginCredentials, AuthResponse } from '../types';
 
 export const authApi = {
   // Login user
   login: async (credentials: LoginCredentials): Promise<AuthResponse> => {
-    const response = await api.post<ApiResponse<AuthResponse>>('/auth/login', credentials);
-    return response.data.data!;
+    const response = await api.post<AuthResponse>('/auth/login', credentials);
+    return response.data;
   },
 
   // Logout user
@@ -15,7 +15,7 @@ export const authApi = {
 
   // Verify token is still valid
   verifyToken: async (): Promise<AuthResponse> => {
-    const response = await api.get<ApiResponse<AuthResponse>>('/auth/verify');
-    return response.data.data!;
+    const response = await api.get<AuthResponse>('/auth/verify');
+    return response.data;
   },
 };

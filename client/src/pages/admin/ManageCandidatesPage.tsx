@@ -1,18 +1,23 @@
 import { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
-import { Button, LoadingSpinner, LoadingScreen } from '../../components/ui';
+import { LoadingScreen, LoadingSpinner } from '../../components/ui';
 import { electionsApi } from '../../api';
 import api from '../../api/axios';
 import { Election, Position, Candidate } from '../../types';
 
-// --- Shared Styles (Consistent with Admin Dashboard) ---
-const glassCardClass = "relative overflow-hidden backdrop-blur-xl bg-white/5 border border-white/10 rounded-2xl transition-all";
-const inputClass = "w-full bg-black/20 border border-white/10 rounded-lg px-4 py-3 text-white placeholder-gray-600 focus:outline-none focus:border-blue-500/50 focus:ring-1 focus:ring-blue-500/50 transition-all";
-const labelClass = "block text-xs font-bold text-blue-300 uppercase tracking-wider mb-2";
-const selectClass = "w-full bg-black/40 border border-white/10 rounded-lg px-4 py-3 text-white focus:outline-none focus:border-blue-500/50 appearance-none cursor-pointer";
+// --- Icons (Matching Dashboard Style) ---
+const Icons = {
+  Back: () => <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M10 19l-7-7m0 0l7-7m-7 7h18" /></svg>,
+  Plus: () => <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M12 4v16m8-8H4" /></svg>,
+  Trash: () => <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" /></svg>,
+  Edit: () => <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" /></svg>,
+  User: () => <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" /></svg>,
+  Search: () => <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" /></svg>,
+  Save: () => <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M8 7H5a2 2 0 00-2 2v9a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-3m-1 4l-3 3m0 0l-3-3m3 3V4" /></svg>
+};
 
 export function ManageCandidatesPage() {
-  // --- State Management ---
+  // --- State ---
   const [elections, setElections] = useState<Election[]>([]);
   const [selectedElectionId, setSelectedElectionId] = useState<number | null>(null);
   
@@ -20,22 +25,22 @@ export function ManageCandidatesPage() {
   const [selectedPositionId, setSelectedPositionId] = useState<number | null>(null);
   
   const [candidates, setCandidates] = useState<Candidate[]>([]);
-  const [isLoading, setIsLoading] = useState(true);
   
   // UI State
+  const [isLoading, setIsLoading] = useState(true);
+  const [mounted, setMounted] = useState(false);
   const [showForm, setShowForm] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const [error, setError] = useState('');
   
   // Form Data
   const [editingCandidate, setEditingCandidate] = useState<Candidate | null>(null);
-  const [fullName, setFullName] = useState('');
-  const [manifesto, setManifesto] = useState('');
-  const [photoUrl, setPhotoUrl] = useState('');
+  const [formData, setFormData] = useState({ fullName: '', manifesto: '', photoUrl: '' });
 
   // --- Effects ---
   useEffect(() => {
     loadElections();
+    const timer = setTimeout(() => setMounted(true), 100);
+    return () => clearTimeout(timer);
   }, []);
 
   useEffect(() => {
@@ -54,18 +59,14 @@ export function ManageCandidatesPage() {
     }
   }, [selectedPositionId]);
 
-  // --- Data Loading Functions ---
+  // --- Loaders ---
   const loadElections = async () => {
     try {
       const data = await electionsApi.getAll();
       setElections(data);
       if (data.length > 0) setSelectedElectionId(data[0].election_id);
-    } catch (err) {
-      setError('Failed to load elections');
-    } finally {
-       // Add a tiny artificial delay to smooth out the loading transition
-       setTimeout(() => setIsLoading(false), 300);
-    }
+    } catch (err) { console.error(err); } 
+    finally { setTimeout(() => setIsLoading(false), 500); }
   };
 
   const loadPositions = async (electionId: number) => {
@@ -73,348 +74,326 @@ export function ManageCandidatesPage() {
       const data = await electionsApi.getPositions(electionId);
       setPositions(data);
       if (data.length > 0) setSelectedPositionId(data[0].position_id);
-    } catch (err) {
-      setError('Failed to load positions');
-    }
+    } catch (err) { console.error(err); }
   };
 
   const loadCandidates = async (positionId: number) => {
     try {
       const data = await electionsApi.getCandidates(positionId);
       setCandidates(data);
-    } catch (err) {
-      setError('Failed to load candidates');
-    }
+    } catch (err) { console.error(err); }
   };
 
-  // --- Form Handlers ---
-  const resetForm = () => {
-    setFullName('');
-    setManifesto('');
-    setPhotoUrl('');
-    setEditingCandidate(null);
-    setShowForm(false);
-    setError('');
-  };
-
+  // --- Handlers ---
   const handleEdit = (candidate: Candidate) => {
     setEditingCandidate(candidate);
-    setFullName(candidate.full_name);
-    setManifesto(candidate.manifesto || '');
-    setPhotoUrl(candidate.photo_url || '');
+    setFormData({
+      fullName: candidate.full_name,
+      manifesto: candidate.manifesto || '',
+      photoUrl: candidate.photo_url || ''
+    });
     setShowForm(true);
-    // Scroll to top to see form
-    window.scrollTo({ top: 0, behavior: 'smooth' });
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!selectedPositionId) return;
-
-    setError('');
     setIsSubmitting(true);
 
     try {
-      const candidateData = {
+      const payload = {
         position_id: selectedPositionId,
-        full_name: fullName,
-        manifesto: manifesto || null,
-        photo_url: photoUrl || null,
+        full_name: formData.fullName,
+        manifesto: formData.manifesto || null,
+        photo_url: formData.photoUrl || null,
       };
 
       if (editingCandidate) {
-        await api.put(`/candidates/${editingCandidate.candidate_id}`, candidateData);
+        await api.put(`/candidates/${editingCandidate.candidate_id}`, payload);
       } else {
-        await api.post('/candidates', candidateData);
+        await api.post('/candidates', payload);
       }
-
       await loadCandidates(selectedPositionId);
-      resetForm();
+      closeForm();
     } catch (err) {
-      setError('Failed to save candidate. Please try again.');
+      console.error(err);
+      alert('Operation failed. Please check console.');
     } finally {
       setIsSubmitting(false);
     }
   };
 
   const handleDelete = async (id: number) => {
-    if (!confirm('⚠️ Are you sure? This action cannot be undone.')) return;
+    if (!confirm('Confirm deletion?')) return;
     try {
       await api.delete(`/candidates/${id}`);
       if (selectedPositionId) await loadCandidates(selectedPositionId);
-    } catch (err) {
-      setError('Failed to delete candidate');
-    }
+    } catch (err) { console.error(err); }
   };
 
-  if (isLoading) {
-    return <LoadingScreen message="Loading candidate registry..." />;
-  }
+  const closeForm = () => {
+    setShowForm(false);
+    setEditingCandidate(null);
+    setFormData({ fullName: '', manifesto: '', photoUrl: '' });
+  };
+
+
+
+  const currentElectionTitle = elections.find(e => e.election_id === selectedElectionId)?.title;
+  const currentPositionTitle = positions.find(p => p.position_id === selectedPositionId)?.title;
 
   return (
     <>
-      {/* --- Custom Animation Styles --- */}
       <style>{`
-        @keyframes fadeUp {
-          from { opacity: 0; transform: translateY(20px) scale(0.98); }
-          to { opacity: 1; transform: translateY(0) scale(1); }
-        }
-        .animate-enter {
-          opacity: 0;
-          animation: fadeUp 0.8s cubic-bezier(0.16, 1, 0.3, 1) forwards;
-        }
+        @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
+        @keyframes slideUp { from { transform: translateY(20px); opacity: 0; } to { transform: translateY(0); opacity: 1; } }
+        .animate-enter { animation: slideUp 0.6s cubic-bezier(0.16, 1, 0.3, 1) forwards; }
+        .delay-100 { animation-delay: 100ms; }
+        .delay-200 { animation-delay: 200ms; }
       `}</style>
 
-      <div className="min-h-screen bg-black text-white relative font-sans selection:bg-blue-500/30 p-6 md:p-12">
-        
-        {/* --- Ambient Background --- */}
-        <div className="fixed inset-0 z-0 pointer-events-none">
-          <div className="absolute inset-0 bg-gradient-to-br from-blue-900/20 via-black to-purple-900/20"></div>
-          <div className="absolute top-20 left-20 w-96 h-96 bg-blue-600/10 rounded-full blur-[100px]"></div>
-          <div className="absolute bottom-20 right-20 w-96 h-96 bg-purple-600/10 rounded-full blur-[100px]"></div>
-        </div>
+      <div className="text-white font-sans selection:bg-cyan-500/30 pb-12">
 
-        <div className="relative z-10 max-w-7xl mx-auto">
-
+        <div className="relative z-10 max-w-7xl mx-auto p-6 lg:p-10 space-y-8">
+          
           {/* --- Header --- */}
-          <div className="flex flex-col md:flex-row justify-between items-start md:items-end mb-8 gap-4 animate-enter">
+          <header className={`flex flex-col md:flex-row md:items-center justify-between gap-6 pb-6 border-b border-white/5 opacity-0 ${mounted ? 'animate-enter' : ''}`}>
             <div>
-              <Link to="/admin" className="text-sm text-gray-500 hover:text-blue-400 transition-colors mb-2 inline-block">
-                &larr; Back to Dashboard
+              <Link to="/admin" className="flex items-center gap-2 text-gray-500 hover:text-white transition-colors text-sm mb-2 group">
+                 <Icons.Back /> <span className="group-hover:translate-x-1 transition-transform">Back to Dashboard</span>
               </Link>
-              <h1 className="text-4xl font-bold bg-gradient-to-r from-white via-blue-100 to-gray-400 bg-clip-text text-transparent mb-2">
-                Candidate Registry
+              <h1 className="text-3xl font-bold tracking-tight text-white">
+                Candidate Management
               </h1>
-              <p className="text-gray-400">
-                Manage profiles, manifestos, and approvals.
+              <p className="text-gray-400 text-sm mt-1">
+                Configure rosters for: <span className="text-cyan-400 font-medium">{currentElectionTitle || '...'}</span>
               </p>
             </div>
-            
-            {/* Toggle Add Button */}
-            {!showForm && (
-              <Button 
-                onClick={() => setShowForm(true)} 
-                disabled={!selectedPositionId}
-                className={`bg-gradient-to-r from-blue-600 to-cyan-500 hover:from-blue-500 hover:to-cyan-400 border-0 shadow-lg shadow-blue-500/20 ${!selectedPositionId ? 'opacity-50 cursor-not-allowed' : ''}`}
-              >
-                + Add Candidate
-              </Button>
-            )}
-          </div>
 
-          {/* --- Error Toast --- */}
-          {error && (
-            <div className="bg-red-500/10 border border-red-500/20 text-red-200 px-4 py-3 rounded-lg mb-6 flex items-center gap-3 backdrop-blur-sm animate-in fade-in slide-in-from-top-2">
-              <svg className="w-5 h-5 text-red-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
-              {error}
+            <div className="flex items-center gap-4">
+              <div className="px-5 py-2.5 rounded-xl bg-white/5 border border-white/10 backdrop-blur-md flex flex-col items-end min-w-36">
+                <span className="text-[10px] bg-linear-to-r from-blue-300 to-cyan-300 bg-clip-text text-transparent font-bold uppercase tracking-wider">Total Candidates</span>
+                <span className="font-mono text-xl text-white font-bold leading-none mt-1">{candidates.length}</span>
+              </div>
             </div>
-          )}
+          </header>
 
           <div className="grid grid-cols-1 lg:grid-cols-12 gap-8">
             
-            {/* --- Left Column: Filters & Form (Span 4) --- */}
-            <div className="lg:col-span-4 space-y-6 animate-enter" style={{ animationDelay: '100ms' }}>
+            {/* --- Left Column: Controls & Form (Span 4) --- */}
+            <div className={`lg:col-span-4 space-y-6 opacity-0 ${mounted ? 'animate-enter delay-100' : ''}`}>
               
-              {/* 1. Context Selectors */}
-              <div className={`${glassCardClass} p-6`}>
-                <h3 className="text-lg font-bold text-white mb-4 flex items-center gap-2">
-                  <span className="w-1 h-5 bg-blue-500 rounded-full"></span>
-                  Context
-                </h3>
-                
-                <div className="space-y-4">
-                  <div>
-                    <label className={labelClass}>Election</label>
-                    <div className="relative">
-                      <select
-                        value={selectedElectionId || ''}
-                        onChange={(e) => setSelectedElectionId(Number(e.target.value))}
-                        className={selectClass}
-                      >
-                        <option value="" disabled className="bg-gray-900">Choose Election...</option>
-                        {elections.map((e) => (
-                          <option key={e.election_id} value={e.election_id} className="bg-gray-900">
-                            {e.title}
-                          </option>
-                        ))}
-                      </select>
-                      <div className="absolute right-3 top-3.5 pointer-events-none text-gray-400">▼</div>
-                    </div>
-                  </div>
+              {/* Configuration Card */}
+              <div className="rounded-3xl border border-white/10 bg-[#0a0a0a]/80 backdrop-blur-xl overflow-hidden p-6 shadow-2xl">
+                 
+                 {showForm ? (
+                    // --- Edit/Add Mode ---
+                    <div className="animate-[fadeIn_0.3s_ease-out]">
+                      <div className="flex justify-between items-center mb-6 border-b border-white/5 pb-4">
+                        <h3 className="font-bold text-white flex items-center gap-2">
+                           <span className="w-1.5 h-1.5 rounded-full bg-cyan-400 animate-pulse"></span>
+                           {editingCandidate ? 'Edit Candidate' : 'New Candidate'}
+                        </h3>
+                        <button onClick={closeForm} className="text-xs text-gray-500 hover:text-white">Cancel</button>
+                      </div>
 
-                  <div>
-                    <label className={labelClass}>Position</label>
-                    <div className="relative">
-                      <select
-                        value={selectedPositionId || ''}
-                        onChange={(e) => setSelectedPositionId(Number(e.target.value))}
-                        className={`${selectClass} ${!positions.length ? 'opacity-50' : ''}`}
-                        disabled={positions.length === 0}
-                      >
-                        <option value="" disabled className="bg-gray-900">
-                          {positions.length === 0 ? 'No positions found' : 'Choose Position...'}
-                        </option>
-                        {positions.map((p) => (
-                          <option key={p.position_id} value={p.position_id} className="bg-gray-900">
-                            {p.title}
-                          </option>
-                        ))}
-                      </select>
-                      <div className="absolute right-3 top-3.5 pointer-events-none text-gray-400">▼</div>
+                      <form onSubmit={handleSubmit} className="space-y-4">
+                        <InputGroup label="Full Name">
+                          <input 
+                            required
+                            type="text" 
+                            className="w-full bg-black/50 border border-white/10 rounded-xl px-4 py-3 text-sm text-white focus:border-cyan-500/50 focus:ring-1 focus:ring-cyan-500/50 transition-all outline-none"
+                            placeholder="e.g. Sarah Connor"
+                            value={formData.fullName}
+                            onChange={e => setFormData({...formData, fullName: e.target.value})}
+                          />
+                        </InputGroup>
+
+                        <InputGroup label="Photo URL">
+                          <input 
+                            type="url" 
+                            className="w-full bg-black/50 border border-white/10 rounded-xl px-4 py-3 text-sm text-white focus:border-cyan-500/50 focus:ring-1 focus:ring-cyan-500/50 transition-all outline-none"
+                            placeholder="https://..."
+                            value={formData.photoUrl}
+                            onChange={e => setFormData({...formData, photoUrl: e.target.value})}
+                          />
+                        </InputGroup>
+
+                        <InputGroup label="Manifesto / Platform">
+                          <textarea 
+                            className="w-full bg-black/50 border border-white/10 rounded-xl px-4 py-3 text-sm text-white focus:border-cyan-500/50 focus:ring-1 focus:ring-cyan-500/50 transition-all outline-none resize-none"
+                            rows={4}
+                            placeholder="Campaign promises..."
+                            value={formData.manifesto}
+                            onChange={e => setFormData({...formData, manifesto: e.target.value})}
+                          />
+                        </InputGroup>
+
+                        <div className="pt-2">
+                          <button 
+                            disabled={isSubmitting}
+                            type="submit" 
+                            className="w-full bg-linear-to-r from-cyan-600 to-blue-600 hover:from-cyan-500 hover:to-blue-500 text-white font-bold py-3 rounded-xl shadow-[0_0_20px_rgba(6,182,212,0.3)] transition-all flex items-center justify-center gap-2"
+                          >
+                             {isSubmitting ? <LoadingSpinner size="sm" /> : <><Icons.Save /> Save Profile</>}
+                          </button>
+                        </div>
+                      </form>
                     </div>
-                  </div>
-                </div>
+                 ) : (
+                    // --- Selection Mode ---
+                    <div className="animate-[fadeIn_0.3s_ease-out]">
+                      <h3 className="font-bold text-gray-400 text-xs uppercase tracking-widest mb-6">Context Configuration</h3>
+                      
+                      <div className="space-y-5">
+                        <div className="space-y-2">
+                          <label className="text-sm font-medium text-white ml-1">Select Election</label>
+                          <div className="relative">
+                            <select 
+                              value={selectedElectionId || ''}
+                              onChange={(e) => setSelectedElectionId(Number(e.target.value))}
+                              className="w-full appearance-none bg-white/5 border border-white/10 rounded-xl px-4 py-3 text-sm text-white focus:border-cyan-500/50 outline-none cursor-pointer hover:bg-white/10 transition-colors"
+                            >
+                              {elections.map(e => <option key={e.election_id} value={e.election_id} className="bg-gray-900">{e.title}</option>)}
+                            </select>
+                            <div className="absolute right-4 top-3.5 pointer-events-none text-gray-500"><Icons.Search /></div>
+                          </div>
+                        </div>
+
+                        <div className="space-y-2">
+                          <label className="text-sm font-medium text-white ml-1">Target Position</label>
+                          <div className="relative">
+                            <select 
+                              value={selectedPositionId || ''}
+                              onChange={(e) => setSelectedPositionId(Number(e.target.value))}
+                              disabled={positions.length === 0}
+                              className="w-full appearance-none bg-white/5 border border-white/10 rounded-xl px-4 py-3 text-sm text-white focus:border-cyan-500/50 outline-none cursor-pointer hover:bg-white/10 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                            >
+                               <option value="" disabled className="bg-gray-900">
+                                 {positions.length === 0 ? 'No positions available' : 'Select a position...'}
+                               </option>
+                               {positions.map(p => <option key={p.position_id} value={p.position_id} className="bg-gray-900">{p.title}</option>)}
+                            </select>
+                            <div className="absolute right-4 top-3.5 pointer-events-none text-gray-500">▼</div>
+                          </div>
+                        </div>
+
+                        <div className="pt-6 border-t border-white/5 mt-6">
+                           <button 
+                             onClick={() => setShowForm(true)}
+                             disabled={!selectedPositionId}
+                             className="w-full group bg-white/5 hover:bg-white/10 border border-white/10 hover:border-cyan-500/30 text-gray-300 hover:text-white font-semibold py-3 rounded-xl transition-all flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
+                           >
+                              <div className="p-1 rounded bg-cyan-500/20 text-cyan-400 group-hover:bg-cyan-400 group-hover:text-black transition-colors">
+                                <Icons.Plus />
+                              </div>
+                              Add New Candidate
+                           </button>
+                        </div>
+                      </div>
+                    </div>
+                 )}
               </div>
-
-              {/* 2. Add/Edit Form Panel (Conditional) */}
-              {showForm && (
-                <div className={`${glassCardClass} p-6 border-blue-500/30 shadow-[0_0_30px_rgba(59,130,246,0.1)] animate-in slide-in-from-left-4 fade-in duration-300`}>
-                  <h3 className="text-lg font-bold text-white mb-6 flex items-center gap-2">
-                    <span className="w-1 h-5 bg-emerald-500 rounded-full"></span>
-                    {editingCandidate ? 'Edit Profile' : 'New Candidate'}
-                  </h3>
-                  
-                  <form onSubmit={handleSubmit} className="space-y-5">
-                    <div>
-                      <label className={labelClass}>Full Name</label>
-                      <input
-                        type="text"
-                        value={fullName}
-                        onChange={(e) => setFullName(e.target.value)}
-                        placeholder="e.g. Jane Doe"
-                        className={inputClass}
-                        required
-                      />
-                    </div>
-
-                    <div>
-                      <label className={labelClass}>Photo URL</label>
-                      <input
-                        type="url"
-                        value={photoUrl}
-                        onChange={(e) => setPhotoUrl(e.target.value)}
-                        placeholder="https://..."
-                        className={inputClass}
-                      />
-                    </div>
-
-                    <div>
-                      <label className={labelClass}>Manifesto</label>
-                      <textarea
-                        value={manifesto}
-                        onChange={(e) => setManifesto(e.target.value)}
-                        placeholder="Platform goals..."
-                        rows={4}
-                        className={inputClass}
-                      />
-                    </div>
-
-                    <div className="pt-4 flex gap-3">
-                      <Button 
-                        type="submit" 
-                        disabled={isSubmitting}
-                        className="flex-1 bg-emerald-600 hover:bg-emerald-500 text-white border-0"
-                      >
-                         {isSubmitting ? <LoadingSpinner size="sm" /> : (editingCandidate ? 'Save Changes' : 'Create Profile')}
-                      </Button>
-                      <button 
-                        type="button" 
-                        onClick={resetForm}
-                        className="px-4 py-2 rounded-lg border border-white/10 text-gray-400 hover:text-white hover:bg-white/5 transition-colors text-sm font-medium"
-                      >
-                        Cancel
-                      </button>
-                    </div>
-                  </form>
-                </div>
-              )}
             </div>
 
             {/* --- Right Column: Grid (Span 8) --- */}
-            <div className="lg:col-span-8 animate-enter" style={{ animationDelay: '200ms' }}>
-              <h3 className="text-xl font-bold text-white mb-6 flex items-center gap-2">
-                <span className="w-1 h-6 bg-purple-500 rounded-full"></span>
-                Roster
-              </h3>
+            <div className={`lg:col-span-8 space-y-6 opacity-0 ${mounted ? 'animate-enter delay-200' : ''}`}>
+               
+               {/* Context Header */}
+               <div className="flex items-center justify-between">
+                  <h2 className="text-xl font-bold text-white flex items-center gap-3">
+                    <span className="p-2 rounded-lg bg-white/5 border border-white/10"><Icons.User /></span>
+                    {currentPositionTitle ? `${currentPositionTitle} Candidates` : 'Select Position'}
+                  </h2>
+               </div>
 
-              {!selectedPositionId ? (
-                 <div className={`${glassCardClass} flex flex-col items-center justify-center min-h-[400px] text-gray-500 p-8 border-dashed border-white/10`}>
-                   <div className="text-4xl mb-4 opacity-50">👈</div>
-                   <p>Select an election and position to view candidates.</p>
-                 </div>
-              ) : candidates.length === 0 ? (
-                 <div className={`${glassCardClass} flex flex-col items-center justify-center min-h-[400px] text-gray-500 p-8`}>
-                   <div className="w-16 h-16 bg-white/5 rounded-full flex items-center justify-center mb-4">
-                     <span className="text-2xl">👤</span>
-                   </div>
-                   <p>No candidates registered for this position yet.</p>
-                   <button onClick={() => setShowForm(true)} className="text-blue-400 hover:text-blue-300 mt-2 text-sm font-semibold">
-                     Create the first one &rarr;
-                   </button>
-                 </div>
-              ) : (
-                <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6">
-                  {candidates.map((candidate) => (
-                    <div key={candidate.candidate_id} className={`${glassCardClass} p-6 group hover:border-blue-500/30 hover:bg-white/10 transition-all`}>
-                      
-                      {/* Header: Photo & Name */}
-                      <div className="flex items-center gap-4 mb-4">
-                        <div className="relative w-14 h-14 shrink-0">
-                          {candidate.photo_url ? (
-                            <img 
-                              src={candidate.photo_url} 
-                              alt={candidate.full_name} 
-                              className="w-full h-full object-cover rounded-full border-2 border-white/10 group-hover:border-blue-500/50 transition-colors"
-                            />
-                          ) : (
-                            <div className="w-full h-full rounded-full bg-gradient-to-br from-gray-700 to-gray-900 flex items-center justify-center border-2 border-white/10">
-                              <span className="text-xl">👤</span>
-                            </div>
-                          )}
-                          {/* Status Dot */}
-                          <div className="absolute bottom-0 right-0 w-3 h-3 bg-emerald-500 rounded-full border-2 border-black"></div>
-                        </div>
-                        <div className="overflow-hidden">
-                          <h4 className="font-bold text-white truncate">{candidate.full_name}</h4>
-                          <p className="text-xs text-blue-300 uppercase tracking-wide">Candidate #{candidate.candidate_id}</p>
-                        </div>
-                      </div>
-
-                      {/* Manifesto Preview */}
-                      <div className="mb-6 h-16">
-                        {candidate.manifesto ? (
-                          <p className="text-sm text-gray-400 line-clamp-3 leading-relaxed">
-                            {candidate.manifesto}
-                          </p>
-                        ) : (
-                          <p className="text-sm text-gray-600 italic">No manifesto provided.</p>
-                        )}
-                      </div>
-
-                      {/* Action Footer */}
-                      <div className="flex gap-2 pt-4 border-t border-white/5">
-                        <button 
-                          onClick={() => handleEdit(candidate)}
-                          className="flex-1 py-2 text-xs font-semibold bg-white/5 hover:bg-blue-600/20 hover:text-blue-300 rounded text-gray-300 transition-colors"
-                        >
-                          EDIT
-                        </button>
-                        <button 
-                          onClick={() => handleDelete(candidate.candidate_id)}
-                          className="flex-1 py-2 text-xs font-semibold bg-white/5 hover:bg-red-600/20 hover:text-red-300 rounded text-gray-300 transition-colors"
-                        >
-                          DELETE
-                        </button>
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              )}
+               {!selectedPositionId ? (
+                  <EmptyState message="Select an election and position to view the roster." />
+               ) : candidates.length === 0 ? (
+                  <EmptyState message="No candidates found. Use the panel to add one." />
+               ) : (
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    {candidates.map(candidate => (
+                      <CandidateCard 
+                        key={candidate.candidate_id} 
+                        candidate={candidate} 
+                        onEdit={() => handleEdit(candidate)}
+                        onDelete={() => handleDelete(candidate.candidate_id)}
+                      />
+                    ))}
+                  </div>
+               )}
             </div>
 
           </div>
         </div>
       </div>
     </>
+  );
+}
+
+// --- Sub-Components ---
+
+function InputGroup({ label, children }: { label: string, children: React.ReactNode }) {
+  return (
+    <div className="space-y-1.5">
+      <label className="text-xs font-bold text-gray-500 uppercase tracking-wider ml-1">{label}</label>
+      {children}
+    </div>
+  );
+}
+
+function EmptyState({ message }: { message: string }) {
+  return (
+    <div className="rounded-3xl border border-dashed border-white/10 bg-[#0a0a0a]/30 p-12 flex flex-col items-center justify-center text-center">
+       <div className="w-16 h-16 rounded-2xl bg-white/5 flex items-center justify-center mb-4 text-gray-600">
+         <svg className="w-8 h-8" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10" /></svg>
+       </div>
+       <p className="text-gray-500 text-sm max-w-xs">{message}</p>
+    </div>
+  );
+}
+
+function CandidateCard({ candidate, onEdit, onDelete }: { candidate: Candidate, onEdit: () => void, onDelete: () => void }) {
+  return (
+    <div className="group relative bg-[#0a0a0a] border border-white/10 hover:border-cyan-500/30 rounded-2xl p-5 transition-all duration-300 hover:-translate-y-1 hover:shadow-[0_10px_30px_rgba(0,0,0,0.5)] overflow-hidden">
+       {/* Background Glow on Hover */}
+       <div className="absolute inset-0 bg-linear-to-br from-cyan-900/0 to-blue-900/0 group-hover:from-cyan-900/10 group-hover:to-blue-900/10 transition-colors duration-500" />
+       
+       <div className="relative z-10 flex items-start gap-4">
+          <div className="relative shrink-0">
+             {candidate.photo_url ? (
+               <img src={candidate.photo_url} alt={candidate.full_name} className="w-14 h-14 rounded-full object-cover border-2 border-white/10 group-hover:border-cyan-400/50 transition-colors shadow-lg" />
+             ) : (
+               <div className="w-14 h-14 rounded-full bg-linear-to-br from-gray-800 to-black border border-white/10 flex items-center justify-center text-gray-500 group-hover:text-cyan-400 transition-colors">
+                 <svg className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" /></svg>
+               </div>
+             )}
+             <div className="absolute -bottom-1 -right-1 w-5 h-5 bg-[#0a0a0a] rounded-full flex items-center justify-center">
+                <div className="w-2.5 h-2.5 rounded-full bg-emerald-500 shadow-[0_0_8px_rgba(16,185,129,0.5)]"></div>
+             </div>
+          </div>
+
+          <div className="flex-1 min-w-0">
+             <div className="flex justify-between items-start">
+               <h3 className="text-white font-bold truncate pr-2 group-hover:text-cyan-400 transition-colors">{candidate.full_name}</h3>
+               <span className="text-[10px] font-mono text-gray-600 bg-white/5 px-1.5 py-0.5 rounded">#{candidate.candidate_id}</span>
+             </div>
+             
+             <p className="text-xs text-gray-500 mt-2 line-clamp-2 min-h-[2.5em] leading-relaxed">
+               {candidate.manifesto || "No manifesto provided."}
+             </p>
+
+             <div className="flex items-center gap-2 mt-4 pt-4 border-t border-white/5 opacity-60 group-hover:opacity-100 transition-opacity">
+               <button onClick={onEdit} className="flex-1 flex items-center justify-center gap-1.5 py-1.5 rounded-lg bg-white/5 hover:bg-cyan-500/20 text-xs font-medium text-gray-400 hover:text-cyan-300 transition-colors">
+                 <Icons.Edit /> Edit
+               </button>
+               <button onClick={onDelete} className="flex-1 flex items-center justify-center gap-1.5 py-1.5 rounded-lg bg-white/5 hover:bg-red-500/20 text-xs font-medium text-gray-400 hover:text-red-300 transition-colors">
+                 <Icons.Trash /> Delete
+               </button>
+             </div>
+          </div>
+       </div>
+    </div>
   );
 }

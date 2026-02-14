@@ -1,18 +1,22 @@
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
 import { AuthProvider, useAuth } from './context';
-import { MainLayout, ProtectedRoute } from './components';
+import { MainLayout, ProtectedRoute, SuperAdminLayout, AdminLayout, VoterLayout } from './components';
 import { 
   LandingPage, 
   LoginPage, 
   RegisterPage, 
   VotingBoothPage, 
   VoteSuccessPage, 
-  ResultsPage,
+  VoterResultsPage,
+  AdminResultsPage,
   AdminDashboardPage,
   ManageElectionsPage,
   ManagePositionsPage,
   ManageCandidatesPage,
-  ManageVotersPage
+  ManageVotersPage,
+  SuperAdminDashboardPage,
+  AccountOversightPage,
+  AuditLogsPage
 } from './pages';
 
 function AppRoutes() {
@@ -46,81 +50,57 @@ function AppRoutes() {
         } 
       />
 
-      {/* --- MAIN APP ROUTES WITH NAVBAR/LAYOUT --- */}
+      {/* --- SUPER ADMIN ROUTES --- */}
+      <Route 
+        path="/super-admin"
+        element={
+          <ProtectedRoute allowedRoles={['super_admin']}>
+            <SuperAdminLayout />
+          </ProtectedRoute>
+        }
+      >
+        <Route index element={<SuperAdminDashboardPage />} />
+        <Route path="accounts" element={<AccountOversightPage />} />
+        <Route path="audit" element={<AuditLogsPage />} />
+        <Route path="logs" element={<AuditLogsPage />} />
+      </Route>
+
+      {/* --- ADMIN ROUTES --- */}
+      <Route
+        path="/admin"
+        element={
+          <ProtectedRoute allowedRoles={['admin']}>
+            <AdminLayout />
+          </ProtectedRoute>
+        }
+      >
+        <Route index element={<AdminDashboardPage />} />
+        <Route path="elections" element={<ManageElectionsPage />} />
+        <Route path="positions" element={<ManagePositionsPage />} />
+        <Route path="candidates" element={<ManageCandidatesPage />} />
+        <Route path="voters" element={<ManageVotersPage />} />
+        <Route path="results" element={<AdminResultsPage />} />
+      </Route>
+
+      {/* --- VOTER ROUTES --- */}
+      <Route
+        path="/vote"
+        element={
+          <ProtectedRoute allowedRoles={['voter']}>
+            <VoterLayout />
+          </ProtectedRoute>
+        }
+      >
+        <Route index element={<VotingBoothPage />} />
+        <Route path="success" element={<VoteSuccessPage />} />
+        <Route path="results" element={<VoterResultsPage />} />
+      </Route>
+
+      {/* --- MAIN APP ROUTES (Landing & Shared) --- */}
       <Route element={<MainLayout />}>
         
         {/* Public Landing Page */}
         <Route path="/" element={<LandingPage />} />
-
-        {/* Protected Routes for All Authenticated Users */}
-        <Route
-          path="/results"
-          element={
-            <ProtectedRoute>
-              <ResultsPage />
-            </ProtectedRoute>
-          }
-        />
-
-        {/* Voter-Specific Routes */}
-        <Route
-          path="/vote"
-          element={
-            <ProtectedRoute allowedRoles={['voter']}>
-              <VotingBoothPage />
-            </ProtectedRoute>
-          }
-        />
-        <Route
-          path="/vote/success"
-          element={
-            <ProtectedRoute allowedRoles={['voter']}>
-              <VoteSuccessPage />
-            </ProtectedRoute>
-          }
-        />
-
-        {/* Admin Routes */}
-        <Route
-          path="/admin"
-          element={
-            <ProtectedRoute allowedRoles={['admin']}>
-              <AdminDashboardPage />
-            </ProtectedRoute>
-          }
-        />
-        <Route
-          path="/admin/elections"
-          element={
-            <ProtectedRoute allowedRoles={['admin']}>
-              <ManageElectionsPage />
-            </ProtectedRoute>
-          }
-        />
-        <Route
-          path="/admin/positions"
-          element={
-            <ProtectedRoute allowedRoles={['admin']}>
-              <ManagePositionsPage />
-            </ProtectedRoute>
-          }
-        />
-        <Route
-          path="/admin/candidates"
-          element={
-            <ProtectedRoute allowedRoles={['admin']}>
-              <ManageCandidatesPage />
-            </ProtectedRoute>
-          }
-        />
-        <Route
-          path="/admin/voters"
-          element={
-            <ProtectedRoute allowedRoles={['admin']}>
-              <ManageVotersPage />
-            </ProtectedRoute>
-          }
-        />
 
         {/* 404 Page (with Navbar) */}
         <Route

@@ -4,15 +4,20 @@ import api from '../../api/axios'; // Assuming you have this set up
 
 export function RegisterPage() {
   // --- State ---
-  // Removed fullName state
+  const [fullName, setFullName] = useState('');
   const [userId, setUserId] = useState('');
   const [password, setPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
+  const [showPassword, setShowPassword] = useState(false);
+  const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   
   const [error, setError] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const [isSuccess, setIsSuccess] = useState(false);
   const [mounted, setMounted] = useState(false);
+
+  // User ID format: letters_numbers (e.g. CS_1234)
+  const userIdPattern = /^[A-Za-z]+_\d+$/;
 
   // --- Animation Effect ---
   useEffect(() => {
@@ -21,11 +26,29 @@ export function RegisterPage() {
   }, []);
 
   // --- Handlers ---
+  const handleUserIdChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    // Auto-uppercase and only allow letters, underscores, and digits
+    const value = e.target.value.toUpperCase().replace(/[^A-Z0-9_]/g, '');
+    setUserId(value);
+  };
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError('');
 
-    // 1. Basic Validation
+    // 1. Full Name Validation
+    if (fullName.trim().length < 2) {
+      setError("Please enter your full name.");
+      return;
+    }
+
+    // 2. User ID Format Validation
+    if (!userIdPattern.test(userId)) {
+      setError("Voter ID must follow the format: LETTERS_NUMBERS (e.g. CS_1234)");
+      return;
+    }
+
+    // 3. Password Validation
     if (password !== confirmPassword) {
       setError("Passwords do not match.");
       return;
@@ -38,12 +61,11 @@ export function RegisterPage() {
     setIsLoading(true);
 
     try {
-      // 2. API Call
-      // Removed full_name from payload
-      await api.post('/users', { 
-        user_id: userId,
-        password: password,
-        role: 'voter'
+      // 4. API Call — matches backend: { userId, fullName, password }
+      await api.post('/auth/register', { 
+        userId,
+        fullName: fullName.trim(),
+        password,
       });
       
       // 3. Show Success View
@@ -66,152 +88,216 @@ export function RegisterPage() {
           from { opacity: 0; transform: translateY(15px); }
           to { opacity: 1; transform: translateY(0); }
         }
-        .animate-slide-in {
-          animation: slideInUp 0.4s ease-out forwards;
-        }
+        .animate-slide-in { animation: slideInUp 0.6s ease-out forwards; }
       `}</style>
-
-      {/* --- Background Elements --- */}
-      <div className="absolute inset-0 z-0 pointer-events-none" aria-hidden="true">
-        <div className="absolute inset-0 bg-gradient-to-br from-purple-900/20 via-blue-900/10 to-black"></div>
-        <div className="absolute top-1/4 right-1/4 w-96 h-96 bg-purple-500/10 rounded-full blur-3xl animate-pulse"></div>
+      
+      {/* --- Wavy Background (Unified Blue/Cyan Theme) --- */}
+      <div className="absolute inset-0 z-0 pointer-events-none">
+        <div className="absolute inset-0 bg-linear-to-br from-cyan-900/20 via-blue-900/10 to-black"></div>
+         <div className="absolute top-0 left-0 w-full h-full opacity-20">
+          <svg className="w-full h-full" viewBox="0 0 1200 800" xmlns="http://www.w3.org/2000/svg">
+            <path d="M0,400 C300,350 500,450 700,400 C900,350 1100,250 1200,200 L1200,800 L0,800 Z" fill="#06b6d4" fillOpacity="0.1" />
+          </svg>
+        </div>
+        <div className="absolute top-1/4 right-1/4 w-96 h-96 bg-cyan-500/10 rounded-full blur-3xl animate-pulse"></div>
         <div className="absolute bottom-1/4 left-1/4 w-96 h-96 bg-blue-500/10 rounded-full blur-3xl animate-pulse delay-1000"></div>
       </div>
 
       {/* --- Main Card --- */}
       <div className={`
-        relative z-10 w-full max-w-5xl grid grid-cols-1 lg:grid-cols-2 
-        overflow-hidden rounded-3xl border border-white/10 shadow-2xl 
-        backdrop-blur-md bg-white/[0.02]
+        relative z-10 w-full max-w-4xl grid grid-cols-1 lg:grid-cols-2 
+        overflow-hidden rounded-[2rem] border border-white/10 shadow-2xl 
+        backdrop-blur-xl bg-[#0a0a0a]/80
         transform transition-all duration-700 ease-out
         ${mounted ? 'translate-y-0 opacity-100 scale-100' : 'translate-y-8 opacity-0 scale-95'}
       `}>
         
-        {/* --- Left Side: Branding (Visuals) --- */}
+        {/* --- Left Side: Branding & Timeline --- */}
         <div className={`
-          hidden lg:flex flex-col justify-center p-12 border-r border-white/10 
-          bg-gradient-to-br from-purple-600/10 to-transparent
+          hidden lg:flex flex-col justify-between p-8 border-r border-white/10 
+          bg-linear-to-br from-blue-900/10 to-transparent relative overflow-hidden
           transform transition-all duration-1000 delay-300
           ${mounted ? 'translate-x-0 opacity-100' : '-translate-x-full opacity-0'}
         `}>
-          <div className="flex items-center gap-3 mb-10">
-            <div className="p-2 rounded-lg bg-purple-500/20 border border-purple-400/30">
-              <svg className="w-8 h-8 text-purple-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M18 9v3m0 0v3m0-3h3m-3 0h-3m-2-5a4 4 0 11-8 0 4 4 0 018 0zM3 20a6 6 0 0112 0v1H3v-1z" />
-              </svg>
-            </div>
-            <span className="text-2xl font-bold bg-gradient-to-r from-purple-400 to-pink-300 bg-clip-text text-transparent">
-              Join SmartBallot
-            </span>
+          {/* Top Logo */}
+          <div className="flex items-center gap-3">
+             <img 
+               src="/ballot-logo.png" 
+               alt="SmartBallot Logo" 
+               className="w-10 h-10 rounded-xl object-contain drop-shadow-[0_0_15px_rgba(6,182,212,0.5)]"
+             />
+             <span className="text-xl font-bold tracking-wide text-white">SmartBallot</span>
           </div>
 
-          <h1 className={`text-4xl font-extrabold mb-6 leading-tight transform transition-all duration-1000 delay-500 ${mounted ? 'translate-x-0 opacity-100' : '-translate-x-full opacity-0'}`}>
-            Make your voice heard. <br />
-            <span className="bg-gradient-to-r from-purple-400 to-blue-400 bg-clip-text text-transparent">Register Today.</span>
-          </h1>
-          
-          <p className={`text-gray-400 text-lg mb-8 leading-relaxed transform transition-all duration-1000 delay-700 ${mounted ? 'translate-x-0 opacity-100' : '-translate-x-full opacity-0'}`}>
-            Create your secure voter account to participate in upcoming campus elections.
-          </p>
+          {/* Middle Content */}
+          <div className="relative z-10 my-4">
+            <h1 className="text-3xl font-extrabold mb-4 leading-tight">
+              Create your <br />
+              <span className="bg-linear-to-r from-cyan-400 to-blue-400 bg-clip-text text-transparent">
+                Voter Identity.
+              </span>
+            </h1>
+            
+            {/* Steps Timeline Visual */}
+            <div className="space-y-4 relative">
+               {/* Vertical Line */}
+               <div className="absolute left-[11px] top-3 bottom-3 w-0.5 bg-white/10"></div>
+               
+               {[
+                  { title: 'Registration', desc: 'Enter student details', active: true },
+                  { title: 'Verification', desc: 'Admin approval required', active: false },
+                  { title: 'Access', desc: 'Vote securely', active: false }
+               ].map((step, idx) => (
+                  <div key={idx} className="relative flex items-center gap-4">
+                     <div className={`w-6 h-6 rounded-full border-2 flex items-center justify-center z-10 bg-[#0a0a0a] transition-colors duration-500 ${step.active ? 'border-cyan-500 text-cyan-400 shadow-[0_0_10px_rgba(6,182,212,0.4)]' : 'border-white/10 text-gray-600'}`}>
+                        <span className="text-xs">{idx + 1}</span>
+                     </div>
+                     <div>
+                        <div className={`text-sm font-bold ${step.active ? 'text-white' : 'text-gray-500'}`}>{step.title}</div>
+                        <div className="text-[10px] text-gray-600">{step.desc}</div>
+                     </div>
+                  </div>
+               ))}
+            </div>
+          </div>
 
-          <div className={`space-y-4 transform transition-all duration-1000 delay-900 ${mounted ? 'translate-x-0 opacity-100' : '-translate-x-full opacity-0'}`}>
-             <div className="flex items-center gap-3 text-gray-400">
-                <div className="w-8 h-8 rounded-full bg-white/5 flex items-center justify-center text-emerald-400">1</div>
-                <span className="text-sm font-medium">Fill in your details</span>
-             </div>
-             <div className="h-6 w-0.5 bg-white/10 ml-4 my-1"></div>
-             <div className="flex items-center gap-3 text-gray-400">
-                <div className="w-8 h-8 rounded-full bg-white/5 flex items-center justify-center text-yellow-400">2</div>
-                <span className="text-sm font-medium">Wait for Admin Verification</span>
-             </div>
-             <div className="h-6 w-0.5 bg-white/10 ml-4 my-1"></div>
-             <div className="flex items-center gap-3 text-gray-400">
-                <div className="w-8 h-8 rounded-full bg-white/5 flex items-center justify-center text-blue-400">3</div>
-                <span className="text-sm font-medium">Cast your Secure Vote</span>
-             </div>
+           {/* Bottom Info */}
+          <div className="text-[10px] text-gray-500 font-mono">
+             ENCRYPTION: AES-256-GCM
           </div>
         </div>
 
         {/* --- Right Side: Registration Form --- */}
-        <div className={`p-8 md:p-12 flex flex-col justify-center transform transition-all duration-1000 delay-500 ${mounted ? 'translate-x-0 opacity-100' : 'translate-x-full opacity-0'}`}>
+        <div className={`p-6 md:p-8 flex flex-col justify-center transform transition-all duration-1000 delay-500 ${mounted ? 'translate-x-0 opacity-100' : 'translate-x-full opacity-0'}`}>
           
-          {/* Mobile Logo */}
-          <div className={`mb-8 lg:hidden flex justify-center transform transition-all duration-700 delay-300 ${mounted ? 'translate-y-0 opacity-100' : 'translate-y-4 opacity-0'}`}>
-             <span className="text-2xl font-bold bg-gradient-to-r from-purple-400 to-pink-300 bg-clip-text text-transparent">SmartBallot</span>
-          </div>
-
           {/* Conditional Rendering: Success vs Form */}
           {isSuccess ? (
-            <div className="flex flex-col items-center text-center animate-slide-in">
-              <div className="w-20 h-20 bg-emerald-500/20 rounded-full flex items-center justify-center mb-6 shadow-[0_0_30px_rgba(16,185,129,0.3)]">
-                <svg className="w-10 h-10 text-emerald-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <div className="flex flex-col items-center text-center animate-slide-in py-6">
+              <div className="w-20 h-20 bg-emerald-500/10 rounded-full flex items-center justify-center mb-6 border border-emerald-500/20 shadow-[0_0_40px_rgba(16,185,129,0.2)]">
+                <svg className="w-8 h-8 text-emerald-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M5 13l4 4L19 7" />
                 </svg>
               </div>
-              <h2 className="text-3xl font-bold text-white mb-4">Request Submitted!</h2>
-              <p className="text-gray-400 mb-8 max-w-sm">
-                Your account has been created and is 
-                <span className="text-yellow-400 font-bold"> pending verification</span>. 
-                You will be able to log in once an admin approves your registration.
+              <h2 className="text-2xl font-bold text-white mb-3">Request Submitted</h2>
+              <p className="text-gray-400 text-sm mb-6 max-w-sm leading-relaxed">
+                Your registration is currently <span className="text-yellow-400 font-bold border-b border-yellow-400/30">pending verification</span>. 
+                You will be notified once an administrator approves your account.
               </p>
               <Link 
                 to="/login" 
-                className="px-8 py-3 bg-white/10 hover:bg-white/20 text-white rounded-xl font-bold transition-all"
+                className="px-8 py-3 bg-white hover:bg-gray-200 text-black rounded-lg font-bold transition-all shadow-lg hover:scale-105 text-sm"
               >
                 Return to Login
               </Link>
             </div>
           ) : (
             <>
-              <div className={`text-center mb-8 transform transition-all duration-700 delay-400 ${mounted ? 'translate-y-0 opacity-100' : 'translate-y-4 opacity-0'}`}>
-                <h2 className="text-3xl font-bold text-white mb-2">Create Account</h2>
-                <p className="text-gray-400">Enter your details to register</p>
+              <div className={`text-center mb-6 transform transition-all duration-700 delay-400 ${mounted ? 'translate-y-0 opacity-100' : 'translate-y-4 opacity-0'}`}>
+                <h2 className="text-2xl font-bold text-white mb-1">Sign Up</h2>
+                <p className="text-sm text-gray-400">Join the democratic process today</p>
               </div>
 
               {error && (
-                <div className="mb-6 bg-red-500/10 border border-red-500/50 rounded-xl p-4 flex items-start gap-3 animate-shake">
-                  <p className="text-red-200 text-sm">{error}</p>
+                <div className="mb-4 bg-red-500/10 border border-red-500/20 rounded-lg p-3 flex items-start gap-2 animate-shake">
+                   <svg className="w-4 h-4 text-red-400 min-w-[16px] mt-0.5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" /></svg>
+                  <p className="text-red-200 text-xs text-left">{error}</p>
                 </div>
               )}
 
               <form onSubmit={handleSubmit} className="space-y-4 animate-slide-in">
                 
+                {/* Full Name Field */}
+                <div>
+                  <label className="block text-[10px] font-bold text-gray-500 uppercase tracking-wider mb-1 ml-1">Full Name</label>
+                  <div className="relative group">
+                    <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none text-gray-500 group-focus-within:text-cyan-400 transition-colors">
+                      <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" /></svg>
+                    </div>
+                    <input
+                      type="text"
+                      value={fullName}
+                      onChange={(e) => setFullName(e.target.value)}
+                      placeholder="John Doe"
+                      required
+                      className="w-full pl-10 pr-3 py-3 bg-black/20 border border-white/10 rounded-lg focus:outline-none focus:border-cyan-500/50 focus:ring-1 focus:ring-cyan-500/50 transition-all text-white placeholder-gray-700 hover:border-white/20 text-sm"
+                    />
+                  </div>
+                </div>
+
                 {/* User ID Field */}
                 <div>
-                  <label className="block text-sm font-medium text-gray-400 mb-1.5 ml-1">Student / Voter ID</label>
-                  <input
-                    type="text"
-                    value={userId}
-                    onChange={(e) => setUserId(e.target.value)}
-                    placeholder="STU-2024-001"
-                    required
-                    className="w-full px-4 py-3 bg-white/5 border border-white/10 rounded-xl focus:outline-none focus:ring-2 focus:ring-purple-500/50 transition-all text-white placeholder-gray-600 hover:border-white/20"
-                  />
+                  <label className="block text-[10px] font-bold text-gray-500 uppercase tracking-wider mb-1 ml-1">Student / Voter ID</label>
+                  <div className="relative group">
+                    <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none text-gray-500 group-focus-within:text-cyan-400 transition-colors">
+                      <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 6H5a2 2 0 00-2 2v9a2 2 0 002 2h14a2 2 0 002-2V8a2 2 0 00-2-2h-5m-4 0V5a2 2 0 114 0v1m-4 0h4" /></svg>
+                    </div>
+                    <input
+                      type="text"
+                      value={userId}
+                      onChange={handleUserIdChange}
+                      placeholder="CS_1234"
+                      required
+                      className={`w-full pl-10 pr-3 py-3 bg-black/20 border rounded-lg focus:outline-none focus:ring-1 transition-all text-white placeholder-gray-700 hover:border-white/20 text-sm ${
+                        userId && !userIdPattern.test(userId)
+                          ? 'border-red-500/50 focus:border-red-500/50 focus:ring-red-500/50'
+                          : 'border-white/10 focus:border-cyan-500/50 focus:ring-cyan-500/50'
+                      }`}
+                    />
+                  </div>
+                  {userId && !userIdPattern.test(userId) && (
+                    <p className="text-red-400 text-[10px] mt-1 ml-1">Format: LETTERS_NUMBERS (e.g. CS_1234)</p>
+                  )}
                 </div>
 
                 {/* Password Fields - Side by Side */}
-                <div className="grid grid-cols-2 gap-4">
+                <div className="grid grid-cols-2 gap-3">
                   <div>
-                    <label className="block text-sm font-medium text-gray-400 mb-1.5 ml-1">Password</label>
-                    <input
-                      type="password"
-                      value={password}
-                      onChange={(e) => setPassword(e.target.value)}
-                      placeholder="••••••••"
-                      required
-                      className="w-full px-4 py-3 bg-white/5 border border-white/10 rounded-xl focus:outline-none focus:ring-2 focus:ring-purple-500/50 transition-all text-white placeholder-gray-600 hover:border-white/20"
-                    />
+                    <label className="block text-[10px] font-bold text-gray-500 uppercase tracking-wider mb-1 ml-1">Password</label>
+                    <div className="relative group">
+                      <input
+                        type={showPassword ? 'text' : 'password'}
+                        value={password}
+                        onChange={(e) => setPassword(e.target.value)}
+                        placeholder="••••••••"
+                        required
+                        className="w-full pl-3 pr-9 py-3 bg-black/20 border border-white/10 rounded-lg focus:outline-none focus:border-cyan-500/50 focus:ring-1 focus:ring-cyan-500/50 transition-all text-white placeholder-gray-700 hover:border-white/20 text-sm"
+                      />
+                      <button
+                        type="button"
+                        onClick={() => setShowPassword(!showPassword)}
+                        className="absolute inset-y-0 right-0 pr-3 flex items-center text-gray-500 hover:text-cyan-400 transition-colors"
+                      >
+                        {showPassword ? (
+                          <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13.875 18.825A10.05 10.05 0 0112 19c-4.478 0-8.268-2.943-9.543-7a9.97 9.97 0 011.563-3.029m5.858.908a3 3 0 114.243 4.243M9.878 9.878l4.242 4.242M9.878 9.878L6.59 6.59m7.532 7.532l3.29 3.29M3 3l18 18" /></svg>
+                        ) : (
+                          <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" /><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" /></svg>
+                        )}
+                      </button>
+                    </div>
                   </div>
                   <div>
-                    <label className="block text-sm font-medium text-gray-400 mb-1.5 ml-1">Confirm</label>
-                    <input
-                      type="password"
-                      value={confirmPassword}
-                      onChange={(e) => setConfirmPassword(e.target.value)}
-                      placeholder="••••••••"
-                      required
-                      className="w-full px-4 py-3 bg-white/5 border border-white/10 rounded-xl focus:outline-none focus:ring-2 focus:ring-purple-500/50 transition-all text-white placeholder-gray-600 hover:border-white/20"
-                    />
+                    <label className="block text-[10px] font-bold text-gray-500 uppercase tracking-wider mb-1 ml-1">Confirm</label>
+                    <div className="relative group">
+                      <input
+                        type={showConfirmPassword ? 'text' : 'password'}
+                        value={confirmPassword}
+                        onChange={(e) => setConfirmPassword(e.target.value)}
+                        placeholder="••••••••"
+                        required
+                        className="w-full pl-3 pr-9 py-3 bg-black/20 border border-white/10 rounded-lg focus:outline-none focus:border-cyan-500/50 focus:ring-1 focus:ring-cyan-500/50 transition-all text-white placeholder-gray-700 hover:border-white/20 text-sm"
+                      />
+                      <button
+                        type="button"
+                        onClick={() => setShowConfirmPassword(!showConfirmPassword)}
+                        className="absolute inset-y-0 right-0 pr-3 flex items-center text-gray-500 hover:text-cyan-400 transition-colors"
+                      >
+                        {showConfirmPassword ? (
+                          <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13.875 18.825A10.05 10.05 0 0112 19c-4.478 0-8.268-2.943-9.543-7a9.97 9.97 0 011.563-3.029m5.858.908a3 3 0 114.243 4.243M9.878 9.878l4.242 4.242M9.878 9.878L6.59 6.59m7.532 7.532l3.29 3.29M3 3l18 18" /></svg>
+                        ) : (
+                          <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" /><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" /></svg>
+                        )}
+                      </button>
+                    </div>
                   </div>
                 </div>
 
@@ -219,23 +305,34 @@ export function RegisterPage() {
                   <button
                     type="submit"
                     disabled={isLoading}
-                    className="w-full py-4 rounded-xl font-bold transition-all duration-300 disabled:opacity-50 flex items-center justify-center gap-2 hover:scale-[1.02] active:scale-[0.98] bg-gradient-to-r from-purple-600 to-pink-500 shadow-purple-900/20 hover:shadow-purple-900/40 shadow-lg text-white"
+                    className="w-full py-3 rounded-lg font-bold transition-all duration-300 disabled:opacity-50 flex items-center justify-center gap-2 hover:scale-[1.02] active:scale-[0.98] bg-linear-to-r from-blue-600 to-cyan-500 shadow-[0_0_20px_rgba(6,182,212,0.3)] hover:shadow-[0_0_30px_rgba(6,182,212,0.5)] shadow-lg text-white text-sm"
                   >
-                    {isLoading ? 'Creating Account...' : 'Register'}
+                    {isLoading ? (
+                      <span className="flex items-center gap-2">
+                        <svg className="animate-spin h-4 w-4 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24"><circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle><path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path></svg>
+                        Creating secure account...
+                      </span>
+                    ) : 'Register Now'}
                   </button>
                 </div>
               </form>
 
               {/* Footer Link */}
-              <div className={`mt-6 text-center transform transition-all duration-700 delay-900 ${mounted ? 'translate-y-0 opacity-100' : 'translate-y-6 opacity-0'}`}>
-                <p className="text-sm text-gray-400">
+              <div className={`mt-4 text-center transform transition-all duration-700 delay-900 ${mounted ? 'translate-y-0 opacity-100' : 'translate-y-6 opacity-0'}`}>
+                <p className="text-xs text-gray-500">
                   Already have an account?{' '}
-                  <Link to="/login" className="text-purple-400 hover:text-purple-300 font-semibold transition-colors">
-                    Sign In
+                  <Link to="/login" className="text-cyan-400 hover:text-cyan-300 font-bold transition-colors hover:underline">
+                    Sign In instead
                   </Link>
                 </p>
               </div>
-            </>
+              {/* Return to Landing Page */}
+              <div className={`mt-3 text-center transform transition-all duration-700 delay-1000 ${mounted ? 'translate-y-0 opacity-100' : 'translate-y-6 opacity-0'}`}>
+                <Link to="/" className="inline-flex items-center gap-2 text-[10px] font-medium text-gray-600 hover:text-gray-400 transition-colors group">
+                  <span className="group-hover:-translate-x-0.5 transition-transform">&larr;</span>
+                  Return to Landing Page
+                </Link>
+              </div>            </>
           )}
         </div>
       </div>

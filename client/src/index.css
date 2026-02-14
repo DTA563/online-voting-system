@@ -1,5 +1,11 @@
 @import "tailwindcss";
 
+/* Set a dark background by default to prevent white flashes during transitions/loading */
+body {
+  background-color: #000000;
+  color: #ffffff;
+}
+
 /* Ultra smooth scrolling for anchor links */
 html {
   scroll-behavior: smooth;

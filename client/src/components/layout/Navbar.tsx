@@ -1,19 +1,40 @@
-import { Link, useNavigate, useLocation } from 'react-router-dom';
+import { Link, useLocation } from 'react-router-dom';
 import { useAuth } from '../../context';
 import { Button } from '../ui';
+import { useState, useEffect } from 'react';
 
 export function Navbar() {
-  const { user, isAuthenticated, logout, isAdmin } = useAuth();
-  const navigate = useNavigate();
+  const { user, isAuthenticated, logout, isAdmin, isSuperAdmin } = useAuth();
   const location = useLocation();
   const isLandingPage = location.pathname === '/';
+  
+  const [isScrolled, setIsScrolled] = useState(false);
+
+  useEffect(() => {
+    const handleScroll = () => {
+      setIsScrolled(window.scrollY > 20);
+    };
+    window.addEventListener('scroll', handleScroll);
+    return () => window.removeEventListener('scroll', handleScroll);
+  }, []);
 
   const handleLogout = () => {
     logout();
-    navigate('/login');
+    // Removed the navigate call - auth context will handle the redirect
   };
 
+  // Hide Navbar on specific routes (e.g. admin dashboard)
+  const isHiddenRoute = location.pathname.startsWith('/admin') || location.pathname.startsWith('/super-admin');
+
+  if (isHiddenRoute) return null;
+
   // --- Configuration for Authenticated Links ---
+  const superAdminLinks = [
+    { path: '/super-admin', label: 'DASHBOARD' },
+    { path: '/super-admin/accounts', label: 'ACCOUNTS' },
+    { path: '/super-admin/logs', label: 'LOGS' },
+  ];
+
   const adminLinks = [
     { path: '/admin', label: 'DASHBOARD' },
     { path: '/admin/elections', label: 'ELECTIONS' },
@@ -52,7 +73,7 @@ export function Navbar() {
   return (
     <nav className={`fixed w-full z-50 top-0 start-0 border-b transition-all duration-300 ${
       isLandingPage 
-        ? 'bg-black/20 border-white/5 backdrop-blur-sm' 
+        ? (isScrolled ? 'bg-black/80 border-white/10 backdrop-blur-xl shadow-lg' : 'bg-transparent border-transparent')
         : 'bg-black/60 border-white/10 backdrop-blur-xl'
     }`}>
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
@@ -79,7 +100,9 @@ export function Navbar() {
           <div className="hidden md:flex items-center absolute left-1/2 transform -translate-x-1/2">
             {isAuthenticated && (
               <div className="flex items-center gap-1 p-1 bg-white/5 rounded-2xl border border-white/5 backdrop-blur-md">
-                {isAdmin
+                {isSuperAdmin
+                  ? superAdminLinks.map((link) => <NavItem key={link.path} path={link.path} label={link.label} />)
+                  : isAdmin
                   ? adminLinks.map((link) => <NavItem key={link.path} path={link.path} label={link.label} />)
                   : voterLinks.map((link) => <NavItem key={link.path} path={link.path} label={link.label} />)
                 }
@@ -94,9 +117,10 @@ export function Navbar() {
                 <div className="flex flex-col items-end">
                   <span className="text-sm font-medium text-white">{user?.full_name}</span>
                   <span className={`text-[10px] uppercase tracking-wider font-bold px-2 py-0.5 rounded-full border ${
+                    isSuperAdmin ? "text-pink-400 bg-pink-400/10 border-pink-400/20" :
                     isAdmin ? "text-purple-400 bg-purple-400/10 border-purple-400/20" : "text-blue-400 bg-blue-400/10 border-blue-400/20"
                   }`}>
-                    {user?.role}
+                    {user?.role.replace('_', ' ')}
                   </span>
                 </div>
                 <Button onClick={handleLogout} variant="outline" className="h-9 px-4 text-xs border-white/10 text-gray-300 hover:text-white">

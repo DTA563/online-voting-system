@@ -1,3 +1,3 @@
 export { VotingBoothPage } from './VotingBoothPage';
 export { VoteSuccessPage } from './VoteSuccessPage';
-export { ResultsPage } from './ResultsPage';
+export { ResultsPage as VoterResultsPage } from './ResultsPage';

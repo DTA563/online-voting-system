@@ -4,7 +4,7 @@ import { LoadingScreen } from '../ui';
 
 interface ProtectedRouteProps {
   children: React.ReactNode;
-  allowedRoles?: ('voter' | 'admin')[];
+  allowedRoles?: ('voter' | 'admin' | 'super_admin')[];
 }
 
 export function ProtectedRoute({ children, allowedRoles }: ProtectedRouteProps) {
@@ -24,7 +24,8 @@ export function ProtectedRoute({ children, allowedRoles }: ProtectedRouteProps) 
   // Check role-based access
   if (allowedRoles && user && !allowedRoles.includes(user.role)) {
     // User doesn't have required role - redirect to appropriate page
-    return <Navigate to={user.role === 'admin' ? '/admin' : '/vote'} replace />;
+    const redirectPath = user.role === 'super_admin' ? '/super-admin' : user.role === 'admin' ? '/admin' : '/vote';
+    return <Navigate to={redirectPath} replace />;
   }
 
   return <>{children}</>;

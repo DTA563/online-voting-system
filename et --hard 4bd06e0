@@ -1,0 +1,10 @@
+[33md69e0fa[m[33m ([m[1;36mHEAD[m[33m -> [m[1;32mmain[m[33m, [m[1;31morigin/main[m[33m, [m[1;31morigin/HEAD[m[33m)[m HEAD@{0}: pull --rebase origin main (finish): returning to refs/heads/main
+[33md69e0fa[m[33m ([m[1;36mHEAD[m[33m -> [m[1;32mmain[m[33m, [m[1;31morigin/main[m[33m, [m[1;31morigin/HEAD[m[33m)[m HEAD@{1}: pull --rebase origin main (pick): Frontend: layouts, dashboards, voter & admin pages
+[33mfec50d2[m HEAD@{2}: pull --rebase origin main (start): checkout fec50d245f37f92ceb3863051b6a08660ee684b4
+[33m4bd06e0[m HEAD@{3}: commit: Frontend: layouts, dashboards, voter & admin pages
+[33m5b07c84[m HEAD@{4}: checkout: moving from backend to main
+[33m9bfe1ea[m[33m ([m[1;31morigin/backend[m[33m, [m[1;32mbackend[m[33m)[m HEAD@{5}: commit: Backend: admin, user, audit, and auth updates
+[33m5b07c84[m HEAD@{6}: checkout: moving from main to backend
+[33m5b07c84[m HEAD@{7}: commit: updated Layout (Navbar & Footer), Login Page
+[33ma0f6fe2[m HEAD@{8}: commit: Update project with latest changes
+[33m7a5babd[m HEAD@{9}: clone: from https://github.com/DTA563/online-voting-system.git

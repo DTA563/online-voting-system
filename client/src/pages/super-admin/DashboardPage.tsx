@@ -1,7 +1,6 @@
 import { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import { adminApi } from '../../api';
-import { LoadingScreen } from '../../components/ui';
 
 // ── Types ────────────────────────────────────────────────
 interface DashboardStats {
@@ -344,13 +343,11 @@ export function SuperAdminDashboardPage() {
                    <h3 className="text-[10px] text-zinc-500 font-bold uppercase tracking-wider px-2">Quick Access</h3>
                    <ActionButton 
                       label="Manage Accounts" 
-                      onClick={() => {}} 
                       href="/super-admin/accounts"
                       icon={<Icons.Users />} 
                    />
                    <ActionButton 
                       label="Security Protocols" 
-                      onClick={() => {}} 
                       href="/super-admin/audit"
                       icon={<Icons.Shield />} 
                    />
@@ -385,7 +382,7 @@ function KPICard({ title, value, icon, trend, highlight, details, valueColor }: 
   );
 }
 
-function ActionButton({ label, icon, href }: any) {
+function ActionButton({ label, icon, href }: { label: string; icon: React.ReactNode; href: string }) {
   return (
     <Link to={href} className="flex items-center gap-3 w-full p-3 rounded-xl bg-zinc-900/50 border border-zinc-800/50 hover:bg-zinc-800 hover:border-zinc-700 hover:scale-[1.02] transition-all group">
        <span className="text-zinc-500 group-hover:text-blue-500 transition-colors">{icon}</span>

@@ -2,7 +2,11 @@
 export interface User {
   user_id: string;
   full_name: string;
-  role: 'voter' | 'admin';
+  role: 'voter' | 'admin' | 'super_admin';
+  is_verified?: boolean | number;
+  created_at?: string;
+  status?: 'active' | 'deactivated';
+  last_login?: string;
 }
 
 export interface LoginCredentials {

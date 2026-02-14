@@ -92,6 +92,6 @@ CREATE TABLE audit_logs (
     FOREIGN KEY (performed_by) REFERENCES users(user_id) ON DELETE SET NULL
 ) ENGINE=InnoDB;
 
--- SEED DATA
+-- SEED DATA (Default password: SuperAdmin@123)
 INSERT INTO users (user_id, full_name, password_hash, role, status) 
-VALUES ('SEED_SUPER_ADMIN', 'Initial System Root', '$2b$10$6p/p2VfVfDndjB0I9.IHeuN.GfA.X7h.Xo8Hh6Hh6Hh6Hh6Hh6Hh6', 'super_admin', 'active');
+VALUES ('SEED_SUPER_ADMIN', 'Initial System Root', '$2b$10$y/P6kNAHrHC5hNJWECHKGuwX6Ky1B2eQBAnKBAEjs.P2J1xQUre7m', 'super_admin', 'active');

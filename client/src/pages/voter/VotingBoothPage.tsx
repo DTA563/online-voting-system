@@ -1,13 +1,7 @@
 import { useState, useEffect } from 'react';
-import { useNavigate } from 'react-router-dom';
-import { Button, LoadingSpinner, LoadingScreen } from '../../components/ui';
+import { useNavigate, Link } from 'react-router-dom';
 import { electionsApi, votesApi } from '../../api';
 import { Election, Position, Candidate, VoteSubmission } from '../../types';
-
-// --- Shared Styles ---
-const glassCardClass = "relative overflow-hidden backdrop-blur-xl bg-white/5 border border-white/10 rounded-2xl p-6 transition-all duration-300";
-const selectableCardClass = `${glassCardClass} cursor-pointer hover:bg-white/[0.07] hover:border-white/20 hover:scale-[1.02]`;
-const selectedCardClass = "relative overflow-hidden backdrop-blur-xl bg-blue-600/10 border border-blue-500 rounded-2xl p-6 transition-all duration-300 shadow-[0_0_25px_rgba(37,99,235,0.3)] scale-[1.02]";
 
 export function VotingBoothPage() {
   const [election, setElection] = useState<Election | null>(null);
@@ -18,17 +12,20 @@ export function VotingBoothPage() {
   const [isLoading, setIsLoading] = useState(true);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState('');
+  const [mounted, setMounted] = useState(false);
 
   const navigate = useNavigate();
 
   useEffect(() => {
     loadElectionData();
+    const timer = setTimeout(() => setMounted(true), 50);
+    return () => clearTimeout(timer);
   }, []);
 
   const loadElectionData = async () => {
     try {
       const activeElection = await electionsApi.getActive();
-      
+
       if (!activeElection) {
         setError('No active election at this time.');
         setIsLoading(false);
@@ -37,7 +34,6 @@ export function VotingBoothPage() {
 
       setElection(activeElection);
 
-      // Check status
       const voterStatus = await votesApi.checkVoterStatus(activeElection.election_id);
       if (voterStatus.has_voted) {
         setHasVoted(true);
@@ -45,7 +41,6 @@ export function VotingBoothPage() {
         return;
       }
 
-      // Load ballot data
       const electionPositions = await electionsApi.getPositions(activeElection.election_id);
       setPositions(electionPositions);
 
@@ -55,27 +50,21 @@ export function VotingBoothPage() {
         candidatesMap[position.position_id] = candidates;
       }
       setCandidatesByPosition(candidatesMap);
-
     } catch (err) {
       setError('Failed to load election data.');
       console.error(err);
     } finally {
-      // Artificial delay to smooth out transition
       setTimeout(() => setIsLoading(false), 300);
     }
   };
 
   const handleSelectCandidate = (positionId: number, candidateId: number) => {
-    setSelectedCandidates(prev => ({
-      ...prev,
-      [positionId]: candidateId,
-    }));
+    setSelectedCandidates(prev => ({ ...prev, [positionId]: candidateId }));
   };
 
   const handleSubmitVote = async () => {
     if (!election) return;
 
-    // Validation
     const missingPositions = positions.filter(p => !selectedCandidates[p.position_id]);
     if (missingPositions.length > 0) {
       setError(`Please make a selection for: ${missingPositions.map(p => p.title).join(', ')}`);
@@ -103,247 +92,245 @@ export function VotingBoothPage() {
     }
   };
 
-  // --- Render Loading ---
+
+
+  // --- Loading Skeleton ---
   if (isLoading) {
-    return <LoadingScreen message="Preparing official ballot..." />;
+    return (
+      <div className="font-sans pb-32 animate-pulse">
+        <div className="p-5 md:p-8 space-y-5">
+          {/* Header skeleton */}
+          <div className="rounded-2xl p-6 md:p-8" style={{ backgroundColor: 'var(--v-card)', border: '1px solid var(--v-border)' }}>
+            <div className="flex flex-col items-center gap-4">
+              <div className="h-6 w-28 rounded-full" style={{ backgroundColor: 'var(--v-hover)' }}></div>
+              <div className="h-9 w-72 rounded-xl" style={{ backgroundColor: 'var(--v-hover)' }}></div>
+              <div className="h-4 w-80 rounded-lg" style={{ backgroundColor: 'var(--v-hover)' }}></div>
+            </div>
+          </div>
+          {/* Position skeletons */}
+          {[1, 2].map(i => (
+            <div key={i} className="rounded-2xl overflow-hidden" style={{ backgroundColor: 'var(--v-card)', border: '1px solid var(--v-border)' }}>
+              <div className="p-5" style={{ borderBottom: '1px solid var(--v-border)', backgroundColor: 'var(--v-hover)' }}>
+                <div className="h-6 w-48 rounded-lg" style={{ backgroundColor: 'var(--v-border)' }}></div>
+              </div>
+              <div className="p-5 grid grid-cols-1 md:grid-cols-3 gap-4">
+                {[1, 2, 3].map(j => (
+                  <div key={j} className="rounded-xl p-5" style={{ backgroundColor: 'var(--v-hover)', border: '1px solid var(--v-border)' }}>
+                    <div className="flex flex-col items-center gap-3">
+                      <div className="w-20 h-20 rounded-xl" style={{ backgroundColor: 'var(--v-border)' }}></div>
+                      <div className="h-4 w-24 rounded" style={{ backgroundColor: 'var(--v-border)' }}></div>
+                      <div className="h-3 w-32 rounded" style={{ backgroundColor: 'var(--v-border)' }}></div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          ))}
+        </div>
+      </div>
+    );
   }
 
-  // --- Render Already Voted ---
+  // --- Already Voted ---
   if (hasVoted) {
     return (
-      <div className="min-h-screen bg-black flex items-center justify-center p-6 relative animate-enter">
-         <style>{`
-          @keyframes fadeUp {
-            from { opacity: 0; transform: translateY(20px) scale(0.98); }
-            to { opacity: 1; transform: translateY(0) scale(1); }
-          }
-          .animate-enter {
-            opacity: 0;
-            animation: fadeUp 0.8s cubic-bezier(0.16, 1, 0.3, 1) forwards;
-          }
-        `}</style>
-        
-         {/* Ambient Background */}
-         <div className="fixed inset-0 pointer-events-none">
-            <div className="absolute top-[-20%] left-[-10%] w-[500px] h-[500px] bg-emerald-500/10 rounded-full blur-[100px]"></div>
-        </div>
-
-        <div className={`${glassCardClass} max-w-md text-center py-12 border-emerald-500/20`}>
-          <div className="w-20 h-20 bg-emerald-500/10 rounded-full flex items-center justify-center mx-auto mb-6 shadow-[0_0_20px_rgba(16,185,129,0.2)]">
-            <svg className="w-10 h-10 text-emerald-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
-            </svg>
+      <div className="flex-1 flex items-center justify-center p-6">
+        <div className={`w-full max-w-md transform transition-all duration-700 ease-out ${mounted ? 'translate-y-0 opacity-100 scale-100' : 'translate-y-8 opacity-0 scale-95'}`}>
+          <div className="rounded-2xl p-8 md:p-12 text-center" style={{ backgroundColor: 'var(--v-card)', border: '1px solid var(--v-border)' }}>
+            <div className="w-20 h-20 mx-auto mb-6">
+              <div className="w-full h-full bg-linear-to-br from-emerald-500 to-teal-600 rounded-full flex items-center justify-center shadow-[0_0_20px_rgba(16,185,129,0.3)]">
+                <svg className="w-8 h-8 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M5 13l4 4L19 7" />
+                </svg>
+              </div>
+            </div>
+            <h2 className="text-2xl font-extrabold mb-2" style={{ color: 'var(--v-text)' }}>Vote Already Recorded</h2>
+            <p className="mb-8 text-sm" style={{ color: 'var(--v-text-2)' }}>
+              Your ballot has been securely submitted. You cannot modify your vote once cast.
+            </p>
+            <Link to="/results">
+              <button className="w-full py-3 rounded-xl font-bold text-sm bg-linear-to-r from-blue-600 to-cyan-500 text-white transition-all hover:scale-[1.02] active:scale-[0.98] cursor-pointer shadow-[0_0_15px_rgba(6,182,212,0.25)]">
+                View Election Results
+              </button>
+            </Link>
           </div>
-          <h2 className="text-2xl font-bold text-white mb-2">Vote Recorded</h2>
-          <p className="text-gray-400 mb-8">
-            Your ballot has been securely submitted. You cannot modify your vote once cast.
-          </p>
-          <Button 
-            onClick={() => navigate('/results')}
-            className="w-full bg-white/5 hover:bg-white/10 text-white border border-white/10"
-          >
-            View Live Results
-          </Button>
         </div>
       </div>
     );
   }
 
-  // --- Render No Election ---
+  // --- No Election ---
   if (!election) {
     return (
-      <div className="min-h-screen bg-black flex items-center justify-center p-6 animate-enter">
-         <style>{`
-          @keyframes fadeUp {
-            from { opacity: 0; transform: translateY(20px) scale(0.98); }
-            to { opacity: 1; transform: translateY(0) scale(1); }
-          }
-          .animate-enter {
-            opacity: 0;
-            animation: fadeUp 0.8s cubic-bezier(0.16, 1, 0.3, 1) forwards;
-          }
-        `}</style>
-        <div className={`${glassCardClass} max-w-md text-center py-12`}>
-          <div className="text-6xl mb-6 opacity-50">📭</div>
-          <h2 className="text-2xl font-bold text-white mb-2">No Active Election</h2>
-          <p className="text-gray-400">Please check back later.</p>
+      <div className="flex-1 flex items-center justify-center p-6">
+        <div className={`w-full max-w-md mx-auto transform transition-all duration-700 ease-out ${mounted ? 'translate-y-0 opacity-100 scale-100' : 'translate-y-8 opacity-0 scale-95'}`}>
+          <div className="rounded-2xl p-8 md:p-12 text-center" style={{ backgroundColor: 'var(--v-card)', border: '1px solid var(--v-border)' }}>
+            <div className="text-6xl mb-6 opacity-60">📭</div>
+            <h2 className="text-2xl font-extrabold mb-2" style={{ color: 'var(--v-text)' }}>No Active Election</h2>
+            <p className="text-sm" style={{ color: 'var(--v-text-2)' }}>There are no elections open for voting at this time. Please check back later.</p>
+          </div>
         </div>
       </div>
     );
   }
 
-  // --- Render Main Ballot ---
+  // --- Main Ballot ---
   return (
-    <>
-      {/* --- INJECTED ANIMATION STYLES --- */}
-      <style>{`
-        @keyframes fadeUp {
-          from { opacity: 0; transform: translateY(20px) scale(0.98); }
-          to { opacity: 1; transform: translateY(0) scale(1); }
-        }
-        .animate-enter {
-          opacity: 0; /* Start hidden */
-          animation: fadeUp 0.8s cubic-bezier(0.16, 1, 0.3, 1) forwards;
-        }
-      `}</style>
+    <div className="font-sans pb-32">
+      <div className="p-5 md:p-8 space-y-5">
 
-      <div className="min-h-screen bg-black text-white relative font-sans selection:bg-blue-500/30 p-6 md:p-12">
-        
-        {/* Ambient Background */}
-        <div className="fixed inset-0 z-0 pointer-events-none">
-          <div className="absolute inset-0 bg-[radial-gradient(circle_at_top,_var(--tw-gradient-stops))] from-blue-900/20 via-black to-black"></div>
-          <div className="absolute bottom-0 left-0 w-full h-1/2 bg-gradient-to-t from-blue-900/10 to-transparent"></div>
+        {/* Header Card */}
+        <div className={`transform transition-all duration-700 ease-out ${mounted ? 'translate-y-0 opacity-100 scale-100' : 'translate-y-8 opacity-0 scale-95'}`}>
+          <div className="rounded-2xl p-6 md:p-8 relative overflow-hidden text-center" style={{ backgroundColor: 'var(--v-card)', border: '1px solid var(--v-border)' }}>
+            <div className="relative z-10">
+              <div className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full text-cyan-500 text-xs uppercase tracking-widest font-bold mb-4"
+                   style={{ backgroundColor: 'var(--v-accent-bg)' }}>
+                <span className="w-2 h-2 rounded-full bg-cyan-500 animate-pulse"></span>
+                Official Ballot
+              </div>
+              <h1 className="text-3xl md:text-4xl font-extrabold mb-3">
+                <span className="bg-linear-to-r from-blue-400 to-cyan-400 bg-clip-text text-transparent">
+                  {election.title}
+                </span>
+              </h1>
+              <p className="max-w-lg mx-auto text-sm" style={{ color: 'var(--v-text-2)' }}>
+                Select one candidate for each position below. Your vote is encrypted and anonymous.
+              </p>
+            </div>
+          </div>
         </div>
 
-        <div className="relative z-10 max-w-4xl mx-auto space-y-10 pb-20">
-          
-          {/* Header (No Delay) */}
-          <div className="text-center space-y-4 animate-enter">
-            <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-blue-500/10 border border-blue-500/20 text-blue-400 text-xs uppercase tracking-widest font-bold">
-              <span className="w-2 h-2 rounded-full bg-blue-400 animate-pulse"></span>
-              Official Ballot
-            </div>
-            <h1 className="text-4xl md:text-5xl font-bold text-transparent bg-clip-text bg-gradient-to-r from-white via-blue-100 to-gray-400">
-              {election.title}
-            </h1>
-            <p className="text-gray-400 max-w-lg mx-auto">
-              Please select one candidate for each position below. Your vote is encrypted and anonymous.
-            </p>
+        {/* Error Message */}
+        {error && (
+          <div className="rounded-xl p-4 flex items-start gap-3 bg-red-500/10 border border-red-500/20">
+            <svg className="w-5 h-5 text-red-400 mt-0.5 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" /></svg>
+            <p className="text-red-400 text-sm">{error}</p>
           </div>
+        )}
 
-          {/* Error Message */}
-          {error && (
-            <div className="bg-red-500/10 border border-red-500/50 text-red-200 px-6 py-4 rounded-xl backdrop-blur-md animate-pulse animate-in fade-in slide-in-from-top-4">
-              🚨 {error}
-            </div>
-          )}
-
-          {/* Voting Sections */}
-          <div className="space-y-12">
-            {positions.map((position, index) => (
-              <div 
-                key={position.position_id} 
-                className="space-y-6 animate-enter"
-                style={{ animationDelay: `${(index + 1) * 100}ms` }}
-              >
-                
-                {/* Position Title */}
-                <div className="flex items-center gap-4">
-                  <div className="h-px flex-1 bg-gradient-to-r from-transparent to-white/20"></div>
-                  <h2 className="text-2xl font-bold text-white flex items-center gap-3">
-                    <span className="w-1.5 h-8 bg-purple-500 rounded-full shadow-[0_0_10px_#a855f7]"></span>
-                    {position.title}
-                  </h2>
-                  <div className="h-px flex-1 bg-gradient-to-l from-transparent to-white/20"></div>
+        {/* Voting Sections */}
+        <div className="space-y-5">
+          {positions.map((position, index) => (
+            <div
+              key={position.position_id}
+              className={`transform transition-all duration-700 ease-out ${mounted ? 'translate-y-0 opacity-100' : 'translate-y-8 opacity-0'}`}
+              style={{ transitionDelay: `${(index + 1) * 150}ms` }}
+            >
+              <div className="rounded-2xl overflow-hidden" style={{ backgroundColor: 'var(--v-card)', border: '1px solid var(--v-border)' }}>
+                {/* Position Header */}
+                <div className="p-5 border-b" style={{ borderColor: 'var(--v-border)', backgroundColor: 'var(--v-hover)' }}>
+                  <div className="flex items-center gap-3">
+                    <span className="w-1.5 h-8 bg-linear-to-b from-blue-500 to-cyan-400 rounded-full"></span>
+                    <h2 className="text-xl font-bold" style={{ color: 'var(--v-text)' }}>{position.title}</h2>
+                  </div>
                 </div>
 
                 {/* Candidates Grid */}
-                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                  {candidatesByPosition[position.position_id]?.map((candidate) => {
-                    const isSelected = selectedCandidates[position.position_id] === candidate.candidate_id;
-                    
-                    return (
-                      <div
-                        key={candidate.candidate_id}
-                        onClick={() => handleSelectCandidate(position.position_id, candidate.candidate_id)}
-                        className={isSelected ? selectedCardClass : selectableCardClass}
-                      >
-                        {/* Selection Checkmark Indicator */}
-                        <div className={`absolute top-4 right-4 w-6 h-6 rounded-full border flex items-center justify-center transition-all ${
-                          isSelected 
-                            ? 'bg-blue-500 border-blue-500 text-white shadow-[0_0_10px_#3b82f6]' 
-                            : 'border-white/20 text-transparent'
-                        }`}>
-                          <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M5 13l4 4L19 7" />
-                          </svg>
-                        </div>
+                <div className="p-5">
+                  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                    {candidatesByPosition[position.position_id]?.map((candidate) => {
+                      const isSelected = selectedCandidates[position.position_id] === candidate.candidate_id;
 
-                        {/* Candidate Content */}
-                        <div className="flex flex-col items-center text-center">
-                          
-                          {/* Avatar */}
-                          <div className={`w-24 h-24 rounded-2xl mb-4 overflow-hidden border-2 transition-all ${
-                            isSelected ? 'border-blue-400 shadow-[0_0_20px_rgba(59,130,246,0.4)]' : 'border-white/10'
-                          }`}>
-                            {candidate.photo_url ? (
-                              <img
-                                src={candidate.photo_url}
-                                alt={candidate.full_name}
-                                className="w-full h-full object-cover"
-                              />
-                            ) : (
-                              <div className="w-full h-full bg-white/5 flex items-center justify-center text-3xl">
-                                👤
-                              </div>
+                      return (
+                        <div
+                          key={candidate.candidate_id}
+                          onClick={() => handleSelectCandidate(position.position_id, candidate.candidate_id)}
+                          className={`relative rounded-xl p-5 cursor-pointer transition-all duration-300 border ${
+                            isSelected
+                              ? 'border-cyan-500 scale-[1.02] shadow-[0_0_20px_rgba(6,182,212,0.15)]'
+                              : 'hover:scale-[1.01]'
+                          }`}
+                          style={{
+                            backgroundColor: isSelected ? 'var(--v-accent-bg)' : 'var(--v-hover)',
+                            borderColor: isSelected ? undefined : 'var(--v-border)',
+                          }}
+                        >
+                          {/* Checkmark */}
+                          <div className={`absolute top-4 right-4 w-6 h-6 rounded-full border flex items-center justify-center transition-all ${
+                            isSelected
+                              ? 'bg-cyan-500 border-cyan-500 text-white shadow-[0_0_8px_#06b6d4]'
+                              : 'text-transparent'
+                          }`} style={{ borderColor: isSelected ? undefined : 'var(--v-border)' }}>
+                            <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M5 13l4 4L19 7" />
+                            </svg>
+                          </div>
+
+                          {/* Candidate Content */}
+                          <div className="flex flex-col items-center text-center pt-2">
+                            <div className={`w-20 h-20 rounded-xl mb-4 overflow-hidden border-2 transition-all ${
+                              isSelected ? 'border-cyan-400 shadow-[0_0_15px_rgba(6,182,212,0.2)]' : ''
+                            }`} style={{ borderColor: isSelected ? undefined : 'var(--v-border)' }}>
+                              {candidate.photo_url ? (
+                                <img src={candidate.photo_url} alt={candidate.full_name} className="w-full h-full object-cover" />
+                              ) : (
+                                <div className="w-full h-full flex items-center justify-center text-2xl" style={{ backgroundColor: 'var(--v-hover)' }}>👤</div>
+                              )}
+                            </div>
+
+                            <h3 className="text-base font-bold mb-1.5" style={{ color: isSelected ? 'var(--v-text)' : 'var(--v-text-2)' }}>
+                              {candidate.full_name}
+                            </h3>
+
+                            {candidate.manifesto && (
+                              <p className="text-xs line-clamp-3 leading-relaxed mb-4" style={{ color: 'var(--v-text-3)' }}>
+                                {candidate.manifesto}
+                              </p>
                             )}
-                          </div>
 
-                          <h3 className={`text-lg font-bold mb-2 transition-colors ${isSelected ? 'text-white' : 'text-gray-200'}`}>
-                            {candidate.full_name}
-                          </h3>
-                          
-                          {candidate.manifesto && (
-                            <p className="text-sm text-gray-500 line-clamp-3 leading-relaxed">
-                              {candidate.manifesto}
-                            </p>
-                          )}
-
-                          {/* Visual "Vote" Button Imitation */}
-                          <div className={`mt-6 px-6 py-2 rounded-lg text-sm font-bold tracking-wide uppercase transition-all w-full ${
-                            isSelected 
-                              ? 'bg-blue-500 text-white shadow-[0_0_15px_rgba(37,99,235,0.4)]' 
-                              : 'bg-white/5 text-gray-500 group-hover:bg-white/10'
-                          }`}>
-                            {isSelected ? 'Selected' : 'Select Candidate'}
+                            <div className={`mt-auto w-full py-2 rounded-lg text-xs font-bold tracking-wide uppercase text-center transition-all ${
+                              isSelected
+                                ? 'bg-linear-to-r from-blue-600 to-cyan-500 text-white shadow-[0_0_10px_rgba(6,182,212,0.2)]'
+                                : ''
+                            }`} style={!isSelected ? { backgroundColor: 'var(--v-hover)', color: 'var(--v-text-3)' } : undefined}>
+                              {isSelected ? '✓ Selected' : 'Select'}
+                            </div>
                           </div>
                         </div>
-                      </div>
-                    );
-                  })}
+                      );
+                    })}
+                  </div>
                 </div>
               </div>
-            ))}
-          </div>
-
-          {/* Submit Footer (Delay matches last item) */}
-          <div 
-            className="fixed bottom-0 left-0 w-full p-6 bg-black/80 backdrop-blur-xl border-t border-white/10 z-50 animate-enter"
-            style={{ animationDelay: '500ms' }}
-          >
-            <div className="max-w-4xl mx-auto flex flex-col md:flex-row items-center justify-between gap-4">
-              
-              <div className="text-sm text-gray-400">
-                <span className="text-white font-bold">{Object.keys(selectedCandidates).length}</span> of <span className="text-white font-bold">{positions.length}</span> positions selected
-              </div>
-
-              <Button
-                size="lg"
-                onClick={handleSubmitVote}
-                disabled={isSubmitting || Object.keys(selectedCandidates).length !== positions.length}
-                className={`
-                  w-full md:w-auto px-8 py-3 rounded-xl font-bold text-lg shadow-lg transition-all
-                  ${Object.keys(selectedCandidates).length === positions.length
-                    ? 'bg-gradient-to-r from-blue-600 to-purple-600 hover:shadow-[0_0_20px_rgba(37,99,235,0.5)] text-white border-none'
-                    : 'bg-gray-800 text-gray-500 cursor-not-allowed border border-white/5'}
-                `}
-              >
-                {isSubmitting ? (
-                  <span className="flex items-center gap-2">
-                    <LoadingSpinner size="sm" /> encrypting...
-                  </span>
-                ) : (
-                  "Submit Official Ballot"
-                )}
-              </Button>
             </div>
-          </div>
-          
-          {/* Spacer for fixed footer */}
-          <div className="h-24"></div>
-
+          ))}
         </div>
       </div>
-    </>
+
+      {/* Fixed Bottom Submit Bar */}
+      <div className={`fixed bottom-0 right-0 left-0 z-50 transform transition-all duration-700 ${mounted ? 'translate-y-0 opacity-100' : 'translate-y-full opacity-0'}`}
+           style={{ transitionDelay: '600ms' }}>
+        <div className="p-4 md:p-6" style={{ backgroundColor: 'var(--v-card)', borderTop: '1px solid var(--v-border)', backdropFilter: 'blur(12px)' }}>
+          <div className="max-w-5xl mx-auto flex flex-col md:flex-row items-center justify-between gap-4">
+            <div className="text-sm" style={{ color: 'var(--v-text-2)' }}>
+              <span className="text-cyan-500 font-bold">{Object.keys(selectedCandidates).length}</span>
+              {' '}of{' '}
+              <span className="font-bold" style={{ color: 'var(--v-text)' }}>{positions.length}</span>
+              {' '}positions selected
+            </div>
+
+            <button
+              onClick={handleSubmitVote}
+              disabled={isSubmitting || Object.keys(selectedCandidates).length !== positions.length}
+              className={`w-full md:w-auto px-8 py-3 rounded-xl font-bold text-sm transition-all flex items-center justify-center gap-2 cursor-pointer ${
+                Object.keys(selectedCandidates).length === positions.length
+                  ? 'bg-linear-to-r from-blue-600 to-cyan-500 shadow-[0_0_15px_rgba(6,182,212,0.25)] text-white hover:scale-[1.02] active:scale-[0.98]'
+                  : 'cursor-not-allowed'
+              }`}
+              style={Object.keys(selectedCandidates).length !== positions.length ? { backgroundColor: 'var(--v-hover)', color: 'var(--v-text-3)', border: '1px solid var(--v-border)' } : undefined}
+            >
+              {isSubmitting ? (
+                <>
+                  <svg className="w-4 h-4 animate-spin" fill="none" viewBox="0 0 24 24"><circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" /><path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" /></svg>
+                  Encrypting...
+                </>
+              ) : (
+                'Submit Official Ballot'
+              )}
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
   );
 }
