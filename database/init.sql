@@ -22,6 +22,7 @@ CREATE TABLE users (
     password_hash VARCHAR(255) NOT NULL,
     role ENUM('voter', 'admin', 'super_admin') DEFAULT 'voter',
     status ENUM('active', 'deactivated') DEFAULT 'active',
+    is_verified BOOLEAN DEFAULT TRUE,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 ) ENGINE=InnoDB;
 
@@ -92,6 +93,15 @@ CREATE TABLE audit_logs (
     FOREIGN KEY (performed_by) REFERENCES users(user_id) ON DELETE SET NULL
 ) ENGINE=InnoDB;
 
--- SEED DATA (Default password: SuperAdmin@123)
-INSERT INTO users (user_id, full_name, password_hash, role, status) 
-VALUES ('SEED_SUPER_ADMIN', 'Initial System Root', '$2b$10$y/P6kNAHrHC5hNJWECHKGuwX6Ky1B2eQBAnKBAEjs.P2J1xQUre7m', 'super_admin', 'active');
+-- SEED DATA 
+INSERT INTO users (user_id, full_name, password_hash, role, status, is_verified) 
+VALUES (
+    'SEED_SUPER_ADMIN', 
+    'Initial System Root', 
+    '$2b$10$89J/uV9T.p5p.G9P0hB7GeO3z6eO3z6eO3z6eO3z6eO3z6eO3z6e', 
+    'super_admin', 
+    'active', 
+    true
+);
+
+commit;

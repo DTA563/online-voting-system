@@ -3,18 +3,15 @@ const router = express.Router();
 const adminController = require('../controllers/adminController');
 const authMiddleware = require('../middleware/authMiddleware');
 const adminMiddleware = require('../middleware/adminMiddleware');
-const superAdminMiddleware = require('../middleware/superAdminMiddleware');
 
-//  VOTER REGISTRY (Master List) 
-// Protected by adminMiddleware (Any staff can manage the roll)
-router.post('/registry/register', authMiddleware, adminMiddleware, adminController.registerVoters);
+// All routes in this file require at least Admin privileges
+router.use(authMiddleware);
+router.use(adminMiddleware);
 
-//  USER & ROLE MANAGEMENT 
-// Protected by superAdminMiddleware (Only the head can promote/demote staff)
-router.patch('/users/manage', authMiddleware, superAdminMiddleware, adminController.manageUserRole);
+// --- DASHBOARD STATS ---
+router.get('/stats', adminController.getDashboardStats);
 
-//  AUDIT TRAIL 
-// Protected by adminMiddleware (Only the head can view the full system logs)
-router.get('/logs', authMiddleware, adminMiddleware, adminController.getSystemLogs);
+// --- VOTER REGISTRY (Master List) ---
+router.post('/registry/register', adminController.registerVoters);
 
 module.exports = router;

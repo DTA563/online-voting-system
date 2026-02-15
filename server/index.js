@@ -9,6 +9,8 @@ const db = require('./config/db');
 const authRoutes = require('./routes/authRoutes');
 const voteRoutes = require('./routes/voteRoutes');
 const adminRoutes = require('./routes/adminRoutes');
+const superAdminRoutes = require('./routes/superAdminRoutes');
+const userRoutes = require('./routes/userRoutes');
 const resultRoutes = require('./routes/resultRoutes');
 const electionRoutes = require('./routes/electionRoutes');
 const candidateRoutes = require('./routes/candidateRoutes');
@@ -30,6 +32,12 @@ app.use('/api/votes', voteRoutes);
 // Management & Administration (Elections, Candidates, Roles, Registry)
 app.use('/api/admin', adminRoutes);
 
+// High-Level System Management (Roles, Password Resets, Logs)
+app.use('/api/super-admin', superAdminRoutes);
+
+// User Management (Listing, Verification, Deletion)
+app.use('/api/users', userRoutes);
+
 // Real-time Turnout & Final Results
 app.use('/api/results', resultRoutes);
 
@@ -43,7 +51,7 @@ app.use('/api/candidates', candidateRoutes);
 app.get('/', (req, res) => {
     res.json({ 
         status: "success", 
-        message: "Online Voting System API (v1.0.3) is fully operational.",
+        message: "Online Voting System API (v1.0.8) is fully operational.",
         timestamp: new Date().toISOString()
     });
 });
