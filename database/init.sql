@@ -98,7 +98,7 @@ INSERT INTO users (user_id, full_name, password_hash, role, status, is_verified)
 VALUES (
     'SEED_SUPER_ADMIN', 
     'Initial System Root', 
-    '$2b$10$89J/uV9T.p5p.G9P0hB7GeO3z6eO3z6eO3z6eO3z6eO3z6eO3z6e', 
+    '$2b$10$fA1.6qYvJ3zW7rL9P5Z/OeYFvU3oM6g7C8P9Q0R1S2T3U4V5W6X7Y8Z9'
     'super_admin', 
     'active', 
     true

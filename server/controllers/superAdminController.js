@@ -10,9 +10,11 @@ const bcrypt = require('bcryptjs');
 exports.getAllUsers = async (req, res) => {
     try {
         const users = await User.findAll();
-        res.json({ status: "success", data: users });
+        // Sending the array directly for frontend compatibility
+        res.json(users); 
     } catch (err) {
-        res.status(500).json({ message: "Error fetching users.", error: err.message });
+        console.error("SuperAdmin getAllUsers Error:", err);
+        res.status(500).json({ message: "Error fetching users." });
     }
 };
 

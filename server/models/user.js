@@ -26,8 +26,8 @@ class User {
     // Create a new user
     static async create(userId, fullName, passwordHash, role = 'voter') {
         const [result] = await db.query(
-            'INSERT INTO users (user_id, full_name, password_hash, role, is_verified) VALUES (?, ?, ?, ?, ?)',
-            [userId, fullName, passwordHash, role, is_verified]
+            'INSERT INTO users (user_id, full_name, password_hash, role) VALUES (?, ?, ?, ?)',
+            [userId, fullName, passwordHash, role]
         );
         return result;
     }

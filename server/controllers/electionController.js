@@ -8,8 +8,16 @@ const Election = require('../models/Election');
 exports.getAllElections = async (req, res) => {
     try {
         const userId = req.user.id;
+        const userRole = req.user.role;
+
+        // 1. ADMIN VIEW: Return everything for the management panel
+        if (userRole === 'admin' || userRole === 'super_admin') {
+            const allElections = await Election.getAll();
+            return res.json(allElections);
+        }
+
+        // 2. VOTER VIEW: Return published only with status enrichment
         const elections = await Election.getAllWithUserStatus(userId);
-        
         const now = new Date();
 
         const enrichedElections = elections.map(election => {
@@ -52,10 +60,27 @@ exports.getAllElections = async (req, res) => {
  */
 exports.createElection = async (req, res) => {
     try {
-        const { title, startDate, endDate } = req.body;
-        const electionId = await Election.create(title, startDate, endDate);
+        const { 
+            title, 
+            startDate, start_date, 
+            endDate, end_date 
+        } = req.body;
+
+        const finalStart = startDate || start_date;
+        const finalEnd = endDate || end_date;
+
+        if (!title || !finalStart || !finalEnd) {
+            return res.status(400).json({ 
+                message: "Missing required fields: title, start_date, and end_date are required." 
+            });
+        }
+
+        const electionId = await Election.create(title, finalStart, finalEnd);
         res.status(201).json({ message: "Election created", electionId });
     } catch (err) {
         res.status(500).json({ message: "Error creating election", error: err.message });
     }
 };
+
+
+// voter registry logic
