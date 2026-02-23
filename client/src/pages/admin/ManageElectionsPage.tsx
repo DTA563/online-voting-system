@@ -2,6 +2,7 @@ import { useState, useEffect, useRef } from 'react';
 import { Link } from 'react-router-dom';
 import { LoadingSpinner } from '../../components/ui';
 import { electionsApi } from '../../api';
+import api from '../../api/axios';
 import { Election } from '../../types';
 
 // --- Icons (Consistent Set) ---
@@ -44,17 +45,35 @@ export function ManageElectionsPage() {
     return () => clearTimeout(timer);
   }, []);
 
-  const loadElections = async () => {
-    try {
-      const data = await electionsApi.getAll();
+ const loadElections = async () => {
+  try {
+    console.log('Fetching elections in ManageElectionsPage...');
+    
+    // Make a direct API call to see the raw response
+    const rawResponse = await api.get('/elections', {
+      params: { _t: new Date().getTime() }
+    });
+    console.log('RAW API Response:', rawResponse);
+    console.log('RAW API Response data:', rawResponse.data);
+    
+    // Now try using the api function
+    const data = await electionsApi.getAll();
+    console.log('Processed data from electionsApi:', data);
+    
+    if (Array.isArray(data)) {
       setElections(data);
-    } catch (err: any) {
-      if (err.response?.status !== 404) console.error(err);
+      console.log('Elections set in state:', data.length);
+    } else {
+      console.error('Data is not an array:', data);
       setElections([]);
-    } finally {
-      setTimeout(() => setIsLoading(false), 300);
     }
-  };
+  } catch (err: any) {
+    console.error('Error loading elections:', err);
+    setElections([]);
+  } finally {
+    setTimeout(() => setIsLoading(false), 300);
+  }
+};
 
   // --- Handlers ---
   const handleEdit = (election: Election) => {

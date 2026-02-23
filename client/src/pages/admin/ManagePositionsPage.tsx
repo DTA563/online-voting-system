@@ -1,9 +1,8 @@
 import { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import { LoadingSpinner, LoadingScreen } from '../../components/ui';
-import { electionsApi } from '../../api';
+import { electionsApi, positionsApi } from '../../api';
 import { Election, Position } from '../../types';
-import api from '../../api/axios';
 
 // --- Icons ---
 const Icons = {
@@ -13,7 +12,8 @@ const Icons = {
   Trash: () => <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" /></svg>,
   Edit: () => <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" /></svg>,
   Save: () => <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M5 13l4 4L19 7" /></svg>,
-  Filter: () => <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M3 4a1 1 0 011-1h16a1 1 0 011 1v2.586a1 1 0 01-.293.707l-6.414 6.414a1 1 0 00-.293.707V17l-4 4v-6.586a1 1 0 00-.293-.707L3.293 7.293A1 1 0 013 6.586V4z" /></svg>
+  Filter: () => <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M3 4a1 1 0 011-1h16a1 1 0 011 1v2.586a1 1 0 01-.293.707l-6.414 6.414a1 1 0 00-.293.707V17l-4 4v-6.586a1 1 0 00-.293-.707L3.293 7.293A1 1 0 013 6.586V4z" /></svg>,
+  Refresh: () => <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" /></svg>
 };
 
 export function ManagePositionsPage() {
@@ -27,6 +27,7 @@ export function ManagePositionsPage() {
   const [showForm, setShowForm] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState('');
+  const [debugInfo, setDebugInfo] = useState('');
 
   // Form
   const [editingPosition, setEditingPosition] = useState<Position | null>(null);
@@ -47,13 +48,35 @@ export function ManagePositionsPage() {
     }
   }, [selectedElectionId]);
 
+  // Listen for position updates from other components
+  useEffect(() => {
+    const handlePositionsUpdated = (event: CustomEvent) => {
+      if (selectedElectionId && event.detail?.electionId === selectedElectionId) {
+        console.log('Positions updated in another component, reloading...');
+        loadPositions(selectedElectionId);
+      }
+    };
+    
+    window.addEventListener('positionsUpdated', handlePositionsUpdated as EventListener);
+    
+    return () => {
+      window.removeEventListener('positionsUpdated', handlePositionsUpdated as EventListener);
+    };
+  }, [selectedElectionId]);
+
   // --- Data Loading ---
   const loadElections = async () => {
     try {
+      console.log('Loading elections...');
       const data = await electionsApi.getAll();
+      console.log('Elections loaded:', data);
       setElections(data);
-      if (data.length > 0) setSelectedElectionId(data[0].election_id);
+      if (data.length > 0) {
+        console.log('Setting selected election to:', data[0].election_id);
+        setSelectedElectionId(data[0].election_id);
+      }
     } catch (err) {
+      console.error('Error loading elections:', err);
       setError('Failed to load elections registry.');
     } finally {
       setTimeout(() => setIsLoading(false), 300);
@@ -62,9 +85,20 @@ export function ManagePositionsPage() {
 
   const loadPositions = async (electionId: number) => {
     try {
-      const data = await electionsApi.getPositions(electionId);
+      setError('');
+      setDebugInfo('');
+      console.log('Loading positions for election:', electionId);
+      const data = await positionsApi.getByElection(electionId);
+      console.log('Positions loaded:', data);
       setPositions(data);
-    } catch (err) { setError('Failed to retrieve position hierarchy.'); }
+      
+      if (data.length === 0) {
+        setDebugInfo('No positions found for this election. You can create one using the form.');
+      }
+    } catch (err) { 
+      console.error('Error loading positions:', err);
+      setError('Failed to retrieve position hierarchy. Please check if the positions endpoint exists.'); 
+    }
   };
 
   // --- Handlers ---
@@ -79,8 +113,13 @@ export function ManagePositionsPage() {
     setEditingPosition(position);
     setTitle(position.title);
     setShowForm(true);
-    // Smooth scroll to form area on mobile
     window.scrollTo({ top: 100, behavior: 'smooth' });
+  };
+
+  const handleRefresh = async () => {
+    if (selectedElectionId) {
+      await loadPositions(selectedElectionId);
+    }
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -88,29 +127,73 @@ export function ManagePositionsPage() {
     if (!selectedElectionId) return;
     setError('');
     setIsSubmitting(true);
+    setDebugInfo('');
 
     try {
-      const positionData = { election_id: selectedElectionId, title };
+      let result;
+      
       if (editingPosition) {
-        await api.put(`/positions/${editingPosition.position_id}`, positionData);
+        // Update existing position
+        console.log('Updating position ID:', editingPosition.position_id);
+        result = await positionsApi.update(editingPosition.position_id, title);
+        if (!result) throw new Error('Update failed');
+        console.log('Position updated successfully');
       } else {
-        await api.post('/positions', positionData);
+        // Create new position
+        console.log('Creating new position for election:', selectedElectionId);
+        result = await positionsApi.create(selectedElectionId, title);
+        if (!result) throw new Error('Create failed');
+        console.log('Position created successfully');
       }
+      
+      // Reload positions
       await loadPositions(selectedElectionId);
+      
+      // Dispatch event to notify other components
+      window.dispatchEvent(new CustomEvent('positionsUpdated', { 
+        detail: { electionId: selectedElectionId } 
+      }));
+      
       resetForm();
-    } catch (err) { setError('Operation failed. Please try again.'); } 
-    finally { setIsSubmitting(false); }
+      
+    } catch (err: any) { 
+      console.error('Operation failed:', err);
+      const errorMessage = err.response?.data?.message || err.message || 'Unknown error';
+      setError(`Operation failed: ${errorMessage}. Please check the console for details.`); 
+    } finally { 
+      setIsSubmitting(false); 
+    }
   };
 
   const handleDelete = async (id: number) => {
     if (!confirm('⚠️ Removing this position will delete all associated candidates. Continue?')) return;
     try {
-      await api.delete(`/positions/${id}`);
-      if (selectedElectionId) await loadPositions(selectedElectionId);
-    } catch (err) { setError('Failed to delete position.'); }
+      console.log('Deleting position ID:', id);
+      const success = await positionsApi.delete(id);
+      
+      if (success) {
+        console.log('Position deleted successfully');
+        
+        if (selectedElectionId) {
+          await loadPositions(selectedElectionId);
+          
+          // Dispatch event to notify other components
+          window.dispatchEvent(new CustomEvent('positionsUpdated', { 
+            detail: { electionId: selectedElectionId } 
+          }));
+        }
+      } else {
+        throw new Error('Delete failed');
+      }
+    } catch (err: any) { 
+      console.error('Error deleting position:', err);
+      setError(`Failed to delete position: ${err.response?.data?.message || err.message}`); 
+    }
   };
 
-
+  if (isLoading) {
+    return <LoadingScreen />;
+  }
 
   return (
     <>
@@ -122,7 +205,6 @@ export function ManagePositionsPage() {
       `}</style>
 
       <div className="text-white font-sans selection:bg-blue-500/30 pb-12">
-
         <div className="relative z-10 max-w-7xl mx-auto p-6 lg:p-10 space-y-10">
           
           {/* --- Header --- */}
@@ -139,25 +221,45 @@ export function ManagePositionsPage() {
               </p>
             </div>
 
-            {!showForm && (
-                <button 
-                onClick={() => setShowForm(true)}
-                disabled={!selectedElectionId}
-                className={`group flex items-center gap-2 px-6 py-3 rounded-xl font-bold transition-all shadow-lg shadow-blue-500/20 ${
-                    !selectedElectionId 
-                    ? 'bg-white/5 text-gray-500 cursor-not-allowed' 
-                    : 'bg-linear-to-r from-blue-600 to-cyan-600 hover:from-blue-500 hover:to-cyan-500 text-white'
-                }`}
+            <div className="flex gap-3">
+              {selectedElectionId && (
+                <button
+                  onClick={handleRefresh}
+                  className="p-3 rounded-xl bg-white/5 hover:bg-white/10 border border-white/10 transition-all hover:border-blue-500/30"
+                  title="Refresh positions"
                 >
-                <Icons.Plus /> Add Position
+                  <Icons.Refresh />
                 </button>
-            )}
+              )}
+              {!showForm && (
+                <button 
+                  onClick={() => setShowForm(true)}
+                  disabled={!selectedElectionId}
+                  className={`group flex items-center gap-2 px-6 py-3 rounded-xl font-bold transition-all shadow-lg shadow-blue-500/20 ${
+                      !selectedElectionId 
+                      ? 'bg-white/5 text-gray-500 cursor-not-allowed' 
+                      : 'bg-linear-to-r from-blue-600 to-cyan-600 hover:from-blue-500 hover:to-cyan-500 text-white'
+                  }`}
+                >
+                  <Icons.Plus /> Add Position
+                </button>
+              )}
+            </div>
           </header>
 
           {/* --- Error Banner --- */}
           {error && (
             <div className="animate-in fade-in slide-in-from-top-2 bg-red-500/10 border border-red-500/20 text-red-200 p-4 rounded-xl flex items-center gap-3">
-               <span className="p-1 bg-red-500/20 rounded-full"><Icons.Trash /></span> {error}
+               <span className="p-1 bg-red-500/20 rounded-full"><Icons.Trash /></span> 
+               <span className="flex-1">{error}</span>
+               <button onClick={() => setError('')} className="text-red-400 hover:text-red-300">×</button>
+            </div>
+          )}
+
+          {/* --- Debug Info --- */}
+          {debugInfo && (
+            <div className="bg-blue-500/10 border border-blue-500/20 text-blue-200 p-3 rounded-xl text-sm">
+              {debugInfo}
             </div>
           )}
 
@@ -190,6 +292,12 @@ export function ManagePositionsPage() {
                         <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" /></svg>
                     </div>
                 </div>
+                
+                {selectedElectionId && (
+                  <p className="text-xs text-gray-500 mt-3">
+                    Election ID: {selectedElectionId} | Positions: {positions.length}
+                  </p>
+                )}
               </div>
 
               {/* Create/Edit Form */}
@@ -220,7 +328,7 @@ export function ManagePositionsPage() {
                        <button 
                          type="submit" 
                          disabled={isSubmitting}
-                         className="flex-1 bg-emerald-600 hover:bg-emerald-500 text-white font-bold py-3 rounded-xl transition-all flex items-center justify-center gap-2"
+                         className="flex-1 bg-emerald-600 hover:bg-emerald-500 text-white font-bold py-3 rounded-xl transition-all flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
                        >
                          {isSubmitting ? <LoadingSpinner size="sm" /> : <><Icons.Save /> Save</>}
                        </button>
@@ -244,7 +352,9 @@ export function ManagePositionsPage() {
                  {/* List Header */}
                  <div className="p-6 border-b border-white/10 flex justify-between items-center">
                     <div className="flex items-center gap-3">
-                        <div className="p-2 bg-blue-500/10 rounded-lg text-blue-400"><Icons.Hierarchy /></div>
+                        <div className="p-2 bg-blue-500/10 rounded-lg text-blue-400">
+                          <Icons.Hierarchy />
+                        </div>
                         <h3 className="font-bold text-white text-lg">Position Hierarchy</h3>
                     </div>
                     <span className="text-[10px] font-bold text-gray-500 bg-white/5 px-2 py-1 rounded-md uppercase tracking-wider border border-white/5">
@@ -255,21 +365,26 @@ export function ManagePositionsPage() {
                  {/* List Content */}
                  <div className="flex-1 p-2">
                     {!selectedElectionId ? (
-                        <div className="h-full flex flex-col items-center justify-center text-gray-500 gap-4">
+                        <div className="h-full flex flex-col items-center justify-center text-gray-500 gap-4 py-20">
                            <div className="text-6xl opacity-20 animate-pulse">👈</div>
                            <p>Select an election context to view positions.</p>
                         </div>
                     ) : positions.length === 0 ? (
-                        <div className="h-full flex flex-col items-center justify-center text-gray-500 py-20">
-                           <div className="w-16 h-16 rounded-full bg-white/5 flex items-center justify-center mb-4">
+                        <div className="h-full flex flex-col items-center justify-center text-gray-500 py-16">
+                           <div className="w-20 h-20 rounded-2xl bg-white/5 flex items-center justify-center mb-4">
                               <Icons.Hierarchy />
                            </div>
-                           <p className="font-medium text-white">No positions found</p>
-                           <p className="text-sm mb-4">Start by adding roles for this election.</p>
-                           <button onClick={() => setShowForm(true)} className="text-blue-400 hover:text-blue-300 text-sm font-bold">Create First Position &rarr;</button>
+                           <p className="font-medium text-white text-lg mb-2">No positions found</p>
+                           <p className="text-sm text-gray-500 mb-6">Start by adding roles for this election.</p>
+                           <button 
+                             onClick={() => setShowForm(true)} 
+                             className="px-6 py-3 bg-blue-600 hover:bg-blue-500 text-white rounded-xl font-bold transition-all flex items-center gap-2"
+                           >
+                             <Icons.Plus /> Create First Position
+                           </button>
                         </div>
                     ) : (
-                        <div className="space-y-2">
+                        <div className="space-y-2 max-h-[600px] overflow-y-auto pr-2">
                             {positions.map((position, index) => (
                                 <div
                                   key={position.position_id}

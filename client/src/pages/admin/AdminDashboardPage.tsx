@@ -23,9 +23,20 @@ export function AdminDashboardPage() {
   const [mounted, setMounted] = useState(false);
 
   useEffect(() => {
+    // 1. Initial load
     loadDashboardData();
     const timer = setTimeout(() => setMounted(true), 100);
-    return () => clearTimeout(timer);
+
+    // 2. Set up background polling every 15 seconds for real-time updates
+    const interval = setInterval(() => {
+      loadDashboardData();
+    }, 15000);
+
+    // 3. Clean up timers when component unmounts
+    return () => {
+      clearTimeout(timer);
+      clearInterval(interval);
+    };
   }, []);
 
   const loadDashboardData = async () => {
@@ -200,7 +211,7 @@ export function AdminDashboardPage() {
                   <div className="bg-white/2 border-t border-white/5 p-4 flex justify-between items-center text-xs text-gray-500 font-mono">
                      <span>ID: #{activeElection.election_id.toString().padStart(4, '0')}</span>
                      <Link to={`/admin/elections/${activeElection.election_id}`} className="flex items-center gap-1 hover:text-cyan-400 transition-colors">
-                        Detailed Analytics <Icons.ChevronRight />
+                       Detailed Analytics <Icons.ChevronRight />
                      </Link>
                   </div>
                 </div>
@@ -270,9 +281,9 @@ export function AdminDashboardPage() {
                     <h3 className="text-xs font-bold text-gray-400 uppercase tracking-widest">Quick Actions</h3>
                  </div>
                  <div className="p-2 space-y-1">
+                   <MenuButton icon={<Icons.Archive />} label="Manage Positions" link="/admin/positions" color="text-blue-400" />
                     <MenuButton icon={<Icons.Vote />} label="Manage Candidates" link="/admin/candidates" color="text-purple-400" />
                     <MenuButton icon={<Icons.Users />} label="Voter Database" link="/admin/voters" color="text-cyan-400" />
-                    <MenuButton icon={<Icons.Archive />} label="Manage Positions" link="/admin/positions" color="text-blue-400" />
                  </div>
               </div>
 
