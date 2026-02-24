@@ -27,8 +27,12 @@ exports.castVote = async (req, res) => {
         // 4. Save Vote
         await Vote.castBallot(userId, electionId, candidateId, timeBucket);
 
-        res.json({ status: "success", message: "Vote cast successfully and recorded anonymously." });
+        // WRAP IN DATA: Required by frontend votes.api.ts
+        res.json({ 
+            status: "success", 
+            data: { message: "Vote cast successfully." } 
+        });
     } catch (err) {
-        res.status(500).json({ message: "Error processing vote.", error: err.message });
+        res.status(500).json({ message: "Error processing vote." });
     }
 };

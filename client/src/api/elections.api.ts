@@ -50,8 +50,8 @@ export const electionsApi = {
   },
 
   // Admin: Upload voter registry for an election
-  uploadVoterRegistry: async (electionId: number, voterIds: string[]): Promise<{ message: string }> => {
-    const response = await api.post(`/elections/${electionId}/voter-registry`, { voterIds });
+  uploadVoterRegistry: async (electionId: number, userIds: string[]): Promise<{ message: string }> => {
+    const response = await api.post('/admin/registry/register', { electionId, userIds });
     return response.data;
   },
 };

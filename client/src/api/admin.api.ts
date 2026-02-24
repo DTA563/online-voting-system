@@ -5,12 +5,13 @@ export const adminApi = {
     const response = await api.get('/admin/stats');
     return response.data;
   },
+  
+  // Super Admin Extensions
   getLogs: async () => {
-    const response = await api.get('/admin/logs');
+    const response = await api.get('/super-admin/logs');
     return response.data;
   },
   
-  // Super Admin Extensions
   getAllUsers: async () => {
     const response = await api.get('/super-admin/users');
     return response.data;

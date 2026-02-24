@@ -92,7 +92,7 @@ exports.resetUserPassword = async (req, res) => {
 exports.getSystemLogs = async (req, res) => {
     try {
         const logs = await AuditLog.getAll();
-        res.json({ status: "success", data: logs });
+        res.json(logs);
     } catch (err) {
         res.status(500).json({ message: "Error fetching audit logs.", error: err.message });
     }

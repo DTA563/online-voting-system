@@ -1,22 +1,20 @@
 const Election = require('../models/Election');
 
-/**
- * getAllElections
- * Fetches all published elections and calculates real-time eligibility 
- * and turnout for the current user.
- */
+// getAllElections
+// Returns elections wrapped in a 'data' object to match frontend expectations.
 exports.getAllElections = async (req, res) => {
     try {
         const userId = req.user.id;
         const userRole = req.user.role;
 
-        // 1. ADMIN VIEW: Return everything for the management panel
+        // 1. ADMIN / SUPER ADMIN VIEW
         if (userRole === 'admin' || userRole === 'super_admin') {
             const allElections = await Election.getAll();
-            return res.json(allElections);
+            // WRAP IN DATA OBJECT: This fixes the "No elections found" error
+            return res.json({ status: "success", data: allElections });
         }
 
-        // 2. VOTER VIEW: Return published only with status enrichment
+        // 2. VOTER VIEW
         const elections = await Election.getAllWithUserStatus(userId);
         const now = new Date();
 
@@ -26,61 +24,57 @@ exports.getAllElections = async (req, res) => {
             
             let status = "active";
             let canVote = true;
-            let reason = "";
 
             if (election.is_registered === 0) {
                 status = "ineligible";
                 canVote = false;
-                reason = "Not on the official register.";
             } else if (now < startDate) {
                 status = "upcoming";
                 canVote = false;
-                reason = "Has not started.";
             } else if (now > endDate) {
                 status = "ended";
                 canVote = false;
-                reason = "Election closed.";
             } else if (election.user_has_voted) {
                 status = "completed";
                 canVote = false;
-                reason = "Ballot already cast.";
             }
 
-            return { ...election, current_status: status, can_vote: canVote, eligibility_reason: reason };
+            return { ...election, current_status: status, can_vote: canVote };
         });
 
-        res.json(enrichedElections);
+        res.json({ status: "success", data: enrichedElections });
     } catch (err) {
-        res.status(500).json({ message: "Error fetching elections", error: err.message });
+        console.error("❌ Get Elections Error:", err.message);
+        res.status(500).json({ message: "Error fetching elections" });
     }
 };
 
 /**
- * createElection (Admin Only)
+ * createElection
  */
 exports.createElection = async (req, res) => {
     try {
-        const { 
-            title, 
-            startDate, start_date, 
-            endDate, end_date 
-        } = req.body;
-
-        const finalStart = startDate || start_date;
-        const finalEnd = endDate || end_date;
-
-        if (!title || !finalStart || !finalEnd) {
-            return res.status(400).json({ 
-                message: "Missing required fields: title, start_date, and end_date are required." 
-            });
+        const { title, start_date, end_date } = req.body;
+        if (!title || !start_date || !end_date) {
+            return res.status(400).json({ message: "Missing title or dates." });
         }
-
-        const electionId = await Election.create(title, finalStart, finalEnd);
-        res.status(201).json({ message: "Election created", electionId });
+        const electionId = await Election.create(title, start_date, end_date);
+        res.status(201).json({ status: "success", data: { election_id: electionId } });
     } catch (err) {
-        res.status(500).json({ message: "Error creating election", error: err.message });
+        res.status(500).json({ message: "Failed to create election." });
     }
 };
 
-
-// voter registry logic
+/**
+ * deleteElection
+ */
+exports.deleteElection = async (req, res) => {
+    try {
+        const { id } = req.params;
+        // Ensure you have this method in your Election model
+        await Election.delete(id); 
+        res.json({ status: "success", message: "Election deleted." });
+    } catch (err) {
+        res.status(500).json({ message: "Error deleting election." });
+    }
+};

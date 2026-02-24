@@ -57,14 +57,17 @@ exports.getDashboardStats = async (req, res) => {
         `);
 
         res.json({
-            users: {
-                by_role: userStats,
-                pending: pendingCount[0].count
-            },
-            elections: {
-                total: electionCounts[0].total,
-                active: electionCounts[0].active || 0, // Handle null if no elections
-                completed: electionCounts[0].completed || 0
+            status: "success",
+            data: { // Add this wrapper
+                users: {
+                    by_role: userStats,
+                    pending: pendingCount[0].count
+                },
+                elections: {
+                    total: electionCounts[0].total || 0,
+                    active: electionCounts[0].active || 0,
+                    completed: electionCounts[0].completed || 0
+                }
             }
         });
 

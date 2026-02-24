@@ -4,13 +4,15 @@ const electionController = require('../controllers/electionController');
 const authMiddleware = require('../middleware/authMiddleware');
 const adminMiddleware = require('../middleware/adminMiddleware');
 
-// Voters & Admins can view election
+// VOTER & ADMIN SHARED ROUTES 
 router.get('/', authMiddleware, electionController.getAllElections);
-
 router.get('/active', authMiddleware, electionController.getAllElections);
-//router.get('/elections', authMiddleware, electionController.getAllElections);
 
-// Only Admins can create elections
+// ADMIN ONLY ROUTES 
+// POST 
 router.post('/', authMiddleware, adminMiddleware, electionController.createElection);
+
+// DELETE 
+router.delete('/:id', authMiddleware, adminMiddleware, electionController.deleteElection);
 
 module.exports = router;

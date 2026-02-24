@@ -3,21 +3,16 @@ const router = express.Router();
 const adminController = require('../controllers/adminController');
 const authMiddleware = require('../middleware/authMiddleware');
 const adminMiddleware = require('../middleware/adminMiddleware');
-// const superAdminMiddleware = require('../middleware/superAdminMiddleware');
-// const superAdminController = require('../controllers/superAdminController');
 
 
 // All routes in this file require at least Admin privileges
 router.use(authMiddleware);
 router.use(adminMiddleware);
 
-
 // --- DASHBOARD STATS ---
 router.get('/stats', adminController.getDashboardStats);
 
 // --- VOTER REGISTRY (Master List) ---
 router.post('/registry/register', adminController.registerVoters);
-
-//router.get('/logs', superAdminController.getSystemLogs);
 
 module.exports = router;

@@ -1,6 +1,26 @@
 const db = require('../config/db');
 
 class AuditLog {
+    /**
+     * record
+     * Saves a new audit entry. Includes IP normalization to convert 
+     * the IPv6 loopback (::1) into a readable IPv4 (127.0.0.1).
+     */
+    static async record(userId, action, ipAddress) {
+        // Normalize the IP address
+        let normalizedIp = ipAddress;
+        
+        if (normalizedIp === '::1' || normalizedIp === '::ffff:127.0.0.1') {
+            normalizedIp = '127.0.0.1';
+        }
+
+        await db.query(
+            'INSERT INTO audit_logs (performed_by, action, ip_address) VALUES (?, ?, ?)',
+            [userId, action, normalizedIp]
+        );
+    }
+
+    
     // Record a new action
     static async record(userId, action, ipAddress) {
         await db.query(

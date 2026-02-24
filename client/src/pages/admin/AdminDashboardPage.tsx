@@ -198,7 +198,7 @@ export function AdminDashboardPage() {
                   
                   {/* Decorative Footer Area in Card */}
                   <div className="bg-white/2 border-t border-white/5 p-4 flex justify-between items-center text-xs text-gray-500 font-mono">
-                     <span>ID: #{activeElection.election_id.toString().padStart(4, '0')}</span>
+                     <span>ID: #{activeElection.election_id?.toString().padStart(4, '0')}</span>
                      <Link to={`/admin/elections/${activeElection.election_id}`} className="flex items-center gap-1 hover:text-cyan-400 transition-colors">
                         Detailed Analytics <Icons.ChevronRight />
                      </Link>

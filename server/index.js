@@ -17,6 +17,16 @@ const candidateRoutes = require('./routes/candidateRoutes');
 
 const app = express();
 const PORT = process.env.PORT || 5000;
+app.set('trust proxy', true);
+app.use((req, res, next) => {
+    let ip = req.ip;
+    if (ip === '::1' || ip === '::ffff:127.0.0.1') {
+        ip = '127.0.0.1';
+    }
+    // Force the normalized IP back onto the request object
+    Object.defineProperty(req, 'ip', { value: ip, writable: true });
+    next();
+});
 
 //  GLOBAL MIDDLEWARE 
 app.use(cors());
