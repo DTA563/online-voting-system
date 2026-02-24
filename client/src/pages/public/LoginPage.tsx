@@ -3,7 +3,6 @@ import { useNavigate, useLocation, Link } from 'react-router-dom';
 import { useAuth } from '../../context';
 
 export function LoginPage() {
-  const [loginType, setLoginType] = useState<'user' | 'admin'>('user');
   const [userId, setUserId] = useState('');
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
@@ -49,12 +48,10 @@ export function LoginPage() {
     setIsLoading(true);
 
     try {
-      // Allow specific roles based on login tab
-      const allowedRoles = loginType === 'user' ? ['voter'] : ['admin', 'super_admin'];
+      // Allow all roles - the system will redirect based on actual role
+      const user = await login({ userId, password });
       
-      const user = await login({ userId, password }, allowedRoles);
-      
-      // If we get here, the login AND role check were successful
+      // If we get here, login was successful
       if (from) {
         navigate(from, { replace: true });
       } else {
@@ -69,7 +66,6 @@ export function LoginPage() {
       }
 
     } catch (err: unknown) {
-      // If the role doesn't match, AuthContext throws an error, which is caught here
       const errorMessage = err instanceof Error ? err.message : 'Invalid credentials. Please try again.';
       setError(errorMessage);
     } finally {
@@ -108,7 +104,7 @@ export function LoginPage() {
       </div>
 
       {/* --- Main Login Card --- */}
-      {/* Reduced size and padding for compaction */}
+      {/* Two-column layout with left brand column preserved */}
       <div className={`
         relative z-10 w-full max-w-4xl grid grid-cols-1 lg:grid-cols-2 
         overflow-hidden rounded-4xl border border-white/10 shadow-2xl 
@@ -117,7 +113,7 @@ export function LoginPage() {
         ${mounted ? 'translate-y-0 opacity-100 scale-100' : 'translate-y-8 opacity-0 scale-95'}
       `}>
         
-        {/* Left Side: Brand & Visuals */}
+        {/* Left Side: Brand & Visuals (Preserved) */}
         <div className={`
           hidden lg:flex flex-col justify-between p-8 border-r border-white/10 
           bg-linear-to-br from-blue-900/10 to-transparent relative overflow-hidden
@@ -176,45 +172,8 @@ export function LoginPage() {
         <div className={`p-6 md:p-8 flex flex-col justify-center transform transition-all duration-1000 delay-500 ${mounted ? 'translate-x-0 opacity-100' : 'translate-x-full opacity-0'}`}>
           
           <div className={`text-center mb-6 transform transition-all duration-700 delay-400 ${mounted ? 'translate-y-0 opacity-100' : 'translate-y-4 opacity-0'}`}>
-            <h2 className="text-2xl font-bold text-white mb-1">Sign In</h2>
-            <p className="text-sm text-gray-400">Select your access level to continue</p>
-          </div>
-
-          {/* Seamless Role Tabs */}
-          <div className={`
-             relative flex p-1 bg-black/40 rounded-xl mb-6 border border-white/5 
-             transform transition-all duration-700 delay-500 
-             ${mounted ? 'translate-y-0 opacity-100' : 'translate-y-6 opacity-0'}
-          `}>
-             {/* Slider Background used to indicate selection generally, but here we use direct styles for simplicity and robustness */}
-             <div className="grid grid-cols-2 w-full gap-2">
-                <button
-                  onClick={() => setLoginType('user')}
-                  className={`
-                    relative py-2.5 rounded-lg text-sm font-bold transition-all duration-300 flex items-center justify-center gap-2
-                    ${loginType === 'user' 
-                      ? 'bg-white/10 text-cyan-300 shadow-[0_0_20px_rgba(6,182,212,0.15)] border border-white/10' 
-                      : 'text-gray-500 hover:text-gray-300 hover:bg-white/5 border border-transparent'
-                    }
-                  `}
-                >
-                  <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" /></svg>
-                  Voter
-                </button>
-                <button
-                  onClick={() => setLoginType('admin')}
-                  className={`
-                    relative py-2.5 rounded-lg text-sm font-bold transition-all duration-300 flex items-center justify-center gap-2
-                    ${loginType === 'admin' 
-                      ? 'bg-white/10 text-cyan-300 shadow-[0_0_20px_rgba(6,182,212,0.15)] border border-white/10' 
-                      : 'text-gray-500 hover:text-gray-300 hover:bg-white/5 border border-transparent'
-                    }
-                  `}
-                >
-                  <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z" /></svg>
-                  Admin
-                </button>
-             </div>
+            <h2 className="text-2xl font-bold text-white mb-1">Welcome Back</h2>
+            <p className="text-sm text-gray-400">Sign in to access the voting platform</p>
           </div>
 
           {/* Error Message */}
@@ -227,10 +186,10 @@ export function LoginPage() {
 
           <form onSubmit={handleSubmit} className="space-y-4">
             {/* Inputs Container */}
-            <div key={loginType} className="space-y-4 animate-slide-in">
+            <div className="space-y-4 animate-slide-in">
               <div>
                 <label className="block text-[10px] font-bold text-gray-400 uppercase tracking-wider mb-1 ml-1">
-                  {loginType === 'user' ? 'Student / Voter ID' : 'Admin ID'}
+                  USER ID
                 </label>
                 <div className="relative group">
                    <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none text-gray-500 group-focus-within:text-cyan-400 transition-colors">
@@ -240,7 +199,7 @@ export function LoginPage() {
                     type="text"
                     value={userId}
                     onChange={handleUserIdChange}
-                    placeholder={loginType === 'user' ? 'CS_...' : 'ADM...'}
+                    placeholder="CS_1234"
                     required
                     autoFocus
                     className={`w-full pl-10 pr-3 py-3 bg-black/20 border rounded-lg focus:outline-none focus:ring-1 transition-all text-white placeholder-gray-700 hover:border-white/20 text-sm ${
@@ -303,7 +262,7 @@ export function LoginPage() {
                   </span>
                 ) : (
                    <>
-                    Sign In as {loginType === 'user' ? 'Voter' : 'Administrator'}
+                    Sign In
                     <svg className="w-4 h-4 ml-1" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 8l4 4m0 0l-4 4m4-4H3" /></svg>
                    </>
                 )}
@@ -311,7 +270,7 @@ export function LoginPage() {
             </div>
           </form>
 
-          {/* New Register Link */}
+          {/* Register Link */}
           <div className={`mt-4 text-center transform transition-all duration-700 delay-900 ${mounted ? 'translate-y-0 opacity-100' : 'translate-y-6 opacity-0'}`}>
             <p className="text-gray-500 text-xs">
               New to the platform?{' '}

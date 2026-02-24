@@ -28,8 +28,8 @@ export function AdminSidebar() {
   const navItems = [
     { label: 'Overview', path: '/admin', icon: <Icons.Dashboard /> },
     { label: 'Elections', path: '/admin/elections', icon: <Icons.Elections /> },
+     { label: 'Positions', path: '/admin/positions', icon: <Icons.Positions /> },
     { label: 'Candidates', path: '/admin/candidates', icon: <Icons.Candidates /> },
-    { label: 'Positions', path: '/admin/positions', icon: <Icons.Positions /> }, 
     { label: 'Voters', path: '/admin/voters', icon: <Icons.Voters /> },
     { label: 'Results', path: '/admin/results', icon: <Icons.Results /> },
   ];

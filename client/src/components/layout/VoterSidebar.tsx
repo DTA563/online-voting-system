@@ -9,8 +9,8 @@ const Icons = {
   Logout: () => <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" /></svg>,
   ChevronLeft: () => <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M15 19l-7-7 7-7" /></svg>,
   ChevronRight: () => <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M9 5l7 7-7 7" /></svg>,
-  Sun: () => <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M12 3v1m0 16v1m9-9h-1M4 12H3m15.364 6.364l-.707-.707M6.343 6.343l-.707-.707m12.728 0l-.707.707M6.343 17.657l-.707.707M16 12a4 4 0 11-8 0 4 4 0 018 0z" /></svg>,
-  Moon: () => <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M20.354 15.354A9 9 0 018.646 3.646 9.003 9.003 0 0012 21a9.003 9.003 0 008.354-5.646z" /></svg>,
+  Sun: () => <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M12 3v1m0 16v1m9-9h-1M4 12H3m15.364 6.364l-.707-.707M6.343 6.343l-.707-.707m12.728 0l-.707.707M6.343 17.657l-.707.707M16 12a4 4 0 11-8 0 4 4 0 018 0z" /></svg>,
+  Moon: () => <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M20.354 15.354A9 9 0 018.646 3.646 9.003 9.003 0 0012 21a9.003 9.003 0 008.354-5.646z" /></svg>,
 };
 
 export function VoterSidebar() {
@@ -87,7 +87,9 @@ export function VoterSidebar() {
       {/* Navigation Items */}
       <div className="flex-1 py-6 px-3 space-y-2 overflow-y-auto no-scrollbar">
         {navItems.map((item) => {
-          const isActive = location.pathname.startsWith(item.path);
+          const isActive = item.path === '/vote' 
+            ? location.pathname === '/vote' 
+            : location.pathname.startsWith(item.path);
 
           return (
             <NavLink
@@ -123,26 +125,24 @@ export function VoterSidebar() {
         })}
       </div>
 
-      {/* Theme Toggle */}
+      {/* Modern Theme Toggle */}
       <div className="px-3 pb-4">
         <button
           onClick={toggleTheme}
           className={`
-            flex items-center gap-3 w-full rounded-xl transition-all duration-300 cursor-pointer
+            flex items-center gap-3 w-full rounded-xl transition-colors duration-100 cursor-pointer group hover:opacity-80
             ${isExpanded ? 'px-3 py-3' : 'justify-center py-3'}
           `}
           style={{ backgroundColor: 'var(--v-sidebar-hover)', color: 'var(--v-text-2)' }}
         >
-          {/* Toggle track */}
-          <div className="relative w-10 h-5 rounded-full shrink-0 transition-colors duration-300"
-               style={{ backgroundColor: isDark ? '#374151' : '#06b6d4' }}>
-            <div className={`
-              absolute top-0.5 w-4 h-4 rounded-full bg-white shadow-sm transition-transform duration-300 flex items-center justify-center
-              ${isDark ? 'left-0.5' : 'left-5.5'}
-            `}>
-              <span className="text-[8px]" style={{ color: isDark ? '#374151' : '#06b6d4' }}>
-                {isDark ? <Icons.Moon /> : <Icons.Sun />}
-              </span>
+          <div className="relative w-5 h-5 flex items-center justify-center shrink-0">
+            {/* Sun Icon (Hidden in Dark Mode) */}
+            <div className={`absolute inset-0 transition-all duration-150 ease-in-out ${isDark ? 'scale-0 opacity-0 rotate-90' : 'scale-100 opacity-100 rotate-0'}`}>
+              <Icons.Sun />
+            </div>
+            {/* Moon Icon (Hidden in Light Mode) */}
+            <div className={`absolute inset-0 transition-all duration-150 ease-in-out ${isDark ? 'scale-100 opacity-100 rotate-0' : 'scale-0 opacity-0 -rotate-90'}`}>
+              <Icons.Moon />
             </div>
           </div>
 
@@ -196,4 +196,3 @@ export function VoterSidebar() {
     </div>
   );
 }
-

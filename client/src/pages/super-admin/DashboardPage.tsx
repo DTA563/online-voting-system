@@ -1,20 +1,12 @@
 import { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import { adminApi } from '../../api';
+import { AuditLog } from '../../api/audit.api'; // Import the type from audit.api
 
 // ── Types ────────────────────────────────────────────────
 interface DashboardStats {
   users: { by_role: Record<string, number>; pending: number };
   elections: { total: number; active: number; completed: number };
-}
-
-interface AuditLog {
-  id: number;
-  performed_by: number;
-  full_name: string;
-  action: string;
-  ip_address: string;
-  created_at: string;
 }
 
 interface Alert {
@@ -53,8 +45,12 @@ export function SuperAdminDashboardPage() {
     try {
       const [statsData, logsData] = await Promise.all([adminApi.getStats(), adminApi.getLogs()]);
       setStats(statsData);
-      setLogs(logsData || []);
-      generateAlerts(logsData || [], statsData);
+      
+      // Ensure logsData is an array
+      const logsArray = Array.isArray(logsData) ? logsData : [];
+      setLogs(logsArray);
+      
+      generateAlerts(logsArray, statsData);
     } catch (err) {
       console.error('Fetch failed', err);
     } finally {
@@ -64,7 +60,11 @@ export function SuperAdminDashboardPage() {
 
   const generateAlerts = (logs: AuditLog[], currentStats: DashboardStats | null) => {
     const newAlerts: Alert[] = [];
-    const failedLogins = logs.filter(l => l.action.toLowerCase().includes('failed'));
+    
+    // Check for failed login attempts
+    const failedLogins = logs.filter(l => 
+      l.action && l.action.toLowerCase().includes('failed')
+    );
     
     if (failedLogins.length >= 3) {
       newAlerts.push({
@@ -75,7 +75,8 @@ export function SuperAdminDashboardPage() {
       });
     }
 
-    if (currentStats?.users.pending && currentStats.users.pending > 0) {
+    // Check for pending user accounts
+    if (currentStats?.users?.pending && currentStats.users.pending > 0) {
       newAlerts.push({
         id: 2,
         severity: 'medium',
@@ -123,7 +124,9 @@ export function SuperAdminDashboardPage() {
     );
   }
 
-  const totalUsers = Object.values(stats?.users.by_role ?? {}).reduce((a, b) => a + b, 0);
+  const totalUsers = stats?.users?.by_role 
+    ? Object.values(stats.users.by_role).reduce((a, b) => a + b, 0) 
+    : 0;
 
   return (
     <>
@@ -169,12 +172,12 @@ export function SuperAdminDashboardPage() {
                value={totalUsers} 
                trend="+12%" 
                icon={<Icons.Users />} 
-               details={`${stats?.users.by_role.voter || 0} Voters`}
+               details={`${stats?.users?.by_role?.voter || 0} Voters`}
              />
              
              <KPICard 
                title="Active Elections" 
-               value={stats?.elections.active || 0} 
+               value={stats?.elections?.active || 0} 
                icon={<Icons.Grid />} 
                highlight
                details="Voting in progress"
@@ -192,7 +195,7 @@ export function SuperAdminDashboardPage() {
                 <div className="absolute top-0 right-0 w-20 h-20 bg-blue-500/10 rounded-full blur-2xl -mr-10 -mt-10 group-hover:bg-blue-500/20 transition-all duration-500" />
                 <div>
                   <div className="text-zinc-500 text-xs font-medium uppercase tracking-wider mb-2">Pending Actions</div>
-                  <div className="text-3xl font-bold text-white">{stats?.users.pending || 0}</div>
+                  <div className="text-3xl font-bold text-white">{stats?.users?.pending || 0}</div>
                 </div>
                 <div className="mt-4">
                   <Link to="/super-admin/accounts" className="flex items-center gap-2 text-xs font-bold text-blue-500 hover:text-blue-400 transition-colors">

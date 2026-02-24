@@ -1,8 +1,7 @@
 import { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import { LoadingScreen, LoadingSpinner } from '../../components/ui';
-import { electionsApi } from '../../api';
-import api from '../../api/axios';
+import { electionsApi, positionsApi, candidatesApi } from '../../api';
 import { Election, Position, Candidate } from '../../types';
 
 // --- Icons (Matching Dashboard Style) ---
@@ -13,7 +12,8 @@ const Icons = {
   Edit: () => <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" /></svg>,
   User: () => <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" /></svg>,
   Search: () => <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" /></svg>,
-  Save: () => <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M8 7H5a2 2 0 00-2 2v9a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-3m-1 4l-3 3m0 0l-3-3m3 3V4" /></svg>
+  Save: () => <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M8 7H5a2 2 0 00-2 2v9a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-3m-1 4l-3 3m0 0l-3-3m3 3V4" /></svg>,
+  Refresh: () => <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" /></svg>
 };
 
 export function ManageCandidatesPage() {
@@ -31,6 +31,8 @@ export function ManageCandidatesPage() {
   const [mounted, setMounted] = useState(false);
   const [showForm, setShowForm] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [isRefreshing, setIsRefreshing] = useState(false);
+  const [error, setError] = useState<string | null>(null);
   
   // Form Data
   const [editingCandidate, setEditingCandidate] = useState<Candidate | null>(null);
@@ -43,8 +45,55 @@ export function ManageCandidatesPage() {
     return () => clearTimeout(timer);
   }, []);
 
+  // Listen for election created events
+  useEffect(() => {
+    const handleElectionCreated = () => {
+      console.log('Election created event received, reloading elections...');
+      loadElections();
+    };
+    
+    window.addEventListener('electionCreated', handleElectionCreated);
+    
+    return () => {
+      window.removeEventListener('electionCreated', handleElectionCreated);
+    };
+  }, []);
+
+  // Listen for position updates
+  useEffect(() => {
+    const handlePositionsUpdated = (event: CustomEvent) => {
+      if (selectedElectionId && event.detail?.electionId === selectedElectionId) {
+        console.log('Positions updated, reloading...');
+        loadPositions(selectedElectionId);
+      }
+    };
+    
+    window.addEventListener('positionsUpdated', handlePositionsUpdated as EventListener);
+    
+    return () => {
+      window.removeEventListener('positionsUpdated', handlePositionsUpdated as EventListener);
+    };
+  }, [selectedElectionId]);
+
+  // Refresh when tab becomes visible
+  useEffect(() => {
+    const handleVisibilityChange = () => {
+      if (document.visibilityState === 'visible') {
+        console.log('Tab became visible, reloading elections...');
+        loadElections();
+      }
+    };
+    
+    document.addEventListener('visibilitychange', handleVisibilityChange);
+    
+    return () => {
+      document.removeEventListener('visibilitychange', handleVisibilityChange);
+    };
+  }, []);
+
   useEffect(() => {
     if (selectedElectionId) {
+      console.log('Selected election changed:', selectedElectionId);
       loadPositions(selectedElectionId);
       setSelectedPositionId(null);
       setCandidates([]);
@@ -53,6 +102,7 @@ export function ManageCandidatesPage() {
 
   useEffect(() => {
     if (selectedPositionId) {
+      console.log('Selected position changed:', selectedPositionId);
       loadCandidates(selectedPositionId);
     } else {
       setCandidates([]);
@@ -62,29 +112,72 @@ export function ManageCandidatesPage() {
   // --- Loaders ---
   const loadElections = async () => {
     try {
+      setIsRefreshing(true);
+      setError(null);
+      console.log('Fetching elections from API...');
+      
       const data = await electionsApi.getAll();
+      console.log('Elections received:', data);
+      
       setElections(data);
-      if (data.length > 0) setSelectedElectionId(data[0].election_id);
-    } catch (err) { console.error(err); } 
-    finally { setTimeout(() => setIsLoading(false), 500); }
+      
+      if (data.length > 0) {
+        if (!selectedElectionId || !data.some(e => e.election_id === selectedElectionId)) {
+          console.log('Setting selected election to:', data[0].election_id);
+          setSelectedElectionId(data[0].election_id);
+        }
+      } else {
+        console.log('No elections found in response');
+        setSelectedElectionId(null);
+        setSelectedPositionId(null);
+        setPositions([]);
+        setCandidates([]);
+      }
+    } catch (err) { 
+      console.error('Error loading elections:', err); 
+      setError('Failed to load elections. Please check your connection.');
+    } finally { 
+      setIsRefreshing(false);
+      setTimeout(() => setIsLoading(false), 500); 
+    }
   };
 
   const loadPositions = async (electionId: number) => {
     try {
-      const data = await electionsApi.getPositions(electionId);
+      console.log('Fetching positions for election:', electionId);
+      const data = await positionsApi.getByElection(electionId);
+      console.log('Positions received:', data);
+      
       setPositions(data);
-      if (data.length > 0) setSelectedPositionId(data[0].position_id);
-    } catch (err) { console.error(err); }
+      if (data.length > 0) {
+        console.log('Setting selected position to:', data[0].position_id);
+        setSelectedPositionId(data[0].position_id);
+      } else {
+        console.log('No positions found for this election');
+        setSelectedPositionId(null);
+      }
+    } catch (err) { 
+      console.error('Error loading positions:', err); 
+    }
   };
 
   const loadCandidates = async (positionId: number) => {
     try {
-      const data = await electionsApi.getCandidates(positionId);
+      console.log('Fetching candidates for position:', positionId);
+      const data = await candidatesApi.getByPosition(positionId);
+      console.log('Candidates received:', data);
+      
       setCandidates(data);
-    } catch (err) { console.error(err); }
+    } catch (err) { 
+      console.error('Error loading candidates:', err); 
+    }
   };
 
   // --- Handlers ---
+  const handleRefresh = async () => {
+    await loadElections();
+  };
+
   const handleEdit = (candidate: Candidate) => {
     setEditingCandidate(candidate);
     setFormData({
@@ -99,24 +192,40 @@ export function ManageCandidatesPage() {
     e.preventDefault();
     if (!selectedPositionId) return;
     setIsSubmitting(true);
+    setError(null);
 
     try {
-      const payload = {
-        position_id: selectedPositionId,
-        full_name: formData.fullName,
-        manifesto: formData.manifesto || null,
-        photo_url: formData.photoUrl || null,
-      };
-
+      let result;
+      
       if (editingCandidate) {
-        await api.put(`/candidates/${editingCandidate.candidate_id}`, payload);
+        // Update existing candidate
+        console.log('Updating candidate ID:', editingCandidate.candidate_id);
+        result = await candidatesApi.update(editingCandidate.candidate_id, {
+          full_name: formData.fullName,
+          manifesto: formData.manifesto || null,
+          photo_url: formData.photoUrl || null,
+        });
       } else {
-        await api.post('/candidates', payload);
+        // Create new candidate
+        console.log('Creating new candidate for position:', selectedPositionId);
+        result = await candidatesApi.create({
+          position_id: selectedPositionId,
+          full_name: formData.fullName,
+          manifesto: formData.manifesto || null,
+          photo_url: formData.photoUrl || null,
+        });
       }
-      await loadCandidates(selectedPositionId);
-      closeForm();
+
+      if (result) {
+        console.log('Candidate saved successfully');
+        await loadCandidates(selectedPositionId);
+        closeForm();
+      } else {
+        throw new Error('Operation failed - no data returned');
+      }
     } catch (err) {
-      console.error(err);
+      console.error('Error submitting candidate:', err);
+      setError('Operation failed. Please check console.');
       alert('Operation failed. Please check console.');
     } finally {
       setIsSubmitting(false);
@@ -126,9 +235,18 @@ export function ManageCandidatesPage() {
   const handleDelete = async (id: number) => {
     if (!confirm('Confirm deletion?')) return;
     try {
-      await api.delete(`/candidates/${id}`);
-      if (selectedPositionId) await loadCandidates(selectedPositionId);
-    } catch (err) { console.error(err); }
+      console.log('Deleting candidate ID:', id);
+      const success = await candidatesApi.delete(id);
+      
+      if (success && selectedPositionId) {
+        console.log('Candidate deleted successfully');
+        await loadCandidates(selectedPositionId);
+      } else {
+        throw new Error('Delete failed');
+      }
+    } catch (err) { 
+      console.error('Error deleting candidate:', err); 
+    }
   };
 
   const closeForm = () => {
@@ -137,19 +255,23 @@ export function ManageCandidatesPage() {
     setFormData({ fullName: '', manifesto: '', photoUrl: '' });
   };
 
-
-
   const currentElectionTitle = elections.find(e => e.election_id === selectedElectionId)?.title;
   const currentPositionTitle = positions.find(p => p.position_id === selectedPositionId)?.title;
+
+  if (isLoading) {
+    return <LoadingScreen />;
+  }
 
   return (
     <>
       <style>{`
         @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
         @keyframes slideUp { from { transform: translateY(20px); opacity: 0; } to { transform: translateY(0); opacity: 1; } }
+        @keyframes spin { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }
         .animate-enter { animation: slideUp 0.6s cubic-bezier(0.16, 1, 0.3, 1) forwards; }
         .delay-100 { animation-delay: 100ms; }
         .delay-200 { animation-delay: 200ms; }
+        .spin { animation: spin 1s linear infinite; }
       `}</style>
 
       <div className="text-white font-sans selection:bg-cyan-500/30 pb-12">
@@ -166,11 +288,30 @@ export function ManageCandidatesPage() {
                 Candidate Management
               </h1>
               <p className="text-gray-400 text-sm mt-1">
-                Configure rosters for: <span className="text-cyan-400 font-medium">{currentElectionTitle || '...'}</span>
+                Configure rosters for: <span className="text-cyan-400 font-medium">{currentElectionTitle || 'Select an election'}</span>
               </p>
+              {error && (
+                <p className="text-red-400 text-sm mt-2 bg-red-500/10 border border-red-500/20 rounded-lg px-3 py-2">
+                  Error: {error}
+                </p>
+              )}
             </div>
 
             <div className="flex items-center gap-4">
+              <button
+                onClick={handleRefresh}
+                disabled={isRefreshing}
+                className="p-2.5 rounded-xl bg-white/5 hover:bg-white/10 border border-white/10 transition-all hover:border-cyan-500/30 disabled:opacity-50 disabled:cursor-not-allowed group"
+                title="Refresh elections"
+              >
+                {isRefreshing ? (
+                  <svg className="w-5 h-5 spin" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+                  </svg>
+                ) : (
+                  <Icons.Refresh />
+                )}
+              </button>
               <div className="px-5 py-2.5 rounded-xl bg-white/5 border border-white/10 backdrop-blur-md flex flex-col items-end min-w-36">
                 <span className="text-[10px] bg-linear-to-r from-blue-300 to-cyan-300 bg-clip-text text-transparent font-bold uppercase tracking-wider">Total Candidates</span>
                 <span className="font-mono text-xl text-white font-bold leading-none mt-1">{candidates.length}</span>
@@ -233,7 +374,7 @@ export function ManageCandidatesPage() {
                           <button 
                             disabled={isSubmitting}
                             type="submit" 
-                            className="w-full bg-linear-to-r from-cyan-600 to-blue-600 hover:from-cyan-500 hover:to-blue-500 text-white font-bold py-3 rounded-xl shadow-[0_0_20px_rgba(6,182,212,0.3)] transition-all flex items-center justify-center gap-2"
+                            className="w-full bg-linear-to-r from-cyan-600 to-blue-600 hover:from-cyan-500 hover:to-blue-500 text-white font-bold py-3 rounded-xl shadow-[0_0_20px_rgba(6,182,212,0.3)] transition-all flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
                           >
                              {isSubmitting ? <LoadingSpinner size="sm" /> : <><Icons.Save /> Save Profile</>}
                           </button>
@@ -254,10 +395,31 @@ export function ManageCandidatesPage() {
                               onChange={(e) => setSelectedElectionId(Number(e.target.value))}
                               className="w-full appearance-none bg-white/5 border border-white/10 rounded-xl px-4 py-3 text-sm text-white focus:border-cyan-500/50 outline-none cursor-pointer hover:bg-white/10 transition-colors"
                             >
-                              {elections.map(e => <option key={e.election_id} value={e.election_id} className="bg-gray-900">{e.title}</option>)}
+                              {elections.length === 0 ? (
+                                <option value="" disabled className="bg-gray-900">No elections available</option>
+                              ) : (
+                                elections.map(e => (
+                                  <option key={e.election_id} value={e.election_id} className="bg-gray-900">
+                                    {e.title} (ID: {e.election_id})
+                                  </option>
+                                ))
+                              )}
                             </select>
-                            <div className="absolute right-4 top-3.5 pointer-events-none text-gray-500"><Icons.Search /></div>
+                            <div className="absolute right-4 top-3.5 pointer-events-none text-gray-500">
+                              {isRefreshing ? (
+                                <svg className="w-5 h-5 spin" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+                                </svg>
+                              ) : (
+                                <Icons.Search />
+                              )}
+                            </div>
                           </div>
+                          {elections.length > 0 && (
+                            <p className="text-xs text-gray-500 mt-1">
+                              {elections.length} election{elections.length !== 1 ? 's' : ''} loaded
+                            </p>
+                          )}
                         </div>
 
                         <div className="space-y-2">
@@ -272,7 +434,11 @@ export function ManageCandidatesPage() {
                                <option value="" disabled className="bg-gray-900">
                                  {positions.length === 0 ? 'No positions available' : 'Select a position...'}
                                </option>
-                               {positions.map(p => <option key={p.position_id} value={p.position_id} className="bg-gray-900">{p.title}</option>)}
+                               {positions.map(p => (
+                                 <option key={p.position_id} value={p.position_id} className="bg-gray-900">
+                                   {p.title} (ID: {p.position_id})
+                                 </option>
+                               ))}
                             </select>
                             <div className="absolute right-4 top-3.5 pointer-events-none text-gray-500">▼</div>
                           </div>
@@ -305,12 +471,20 @@ export function ManageCandidatesPage() {
                     <span className="p-2 rounded-lg bg-white/5 border border-white/10"><Icons.User /></span>
                     {currentPositionTitle ? `${currentPositionTitle} Candidates` : 'Select Position'}
                   </h2>
+                  
+                  {selectedPositionId && candidates.length > 0 && (
+                    <span className="text-xs text-gray-500 bg-white/5 px-3 py-1 rounded-full">
+                      {candidates.length} candidate{candidates.length !== 1 ? 's' : ''}
+                    </span>
+                  )}
                </div>
 
-               {!selectedPositionId ? (
+               {elections.length === 0 ? (
+                  <EmptyState message="No elections found. Create an election first to manage candidates." />
+               ) : !selectedPositionId ? (
                   <EmptyState message="Select an election and position to view the roster." />
                ) : candidates.length === 0 ? (
-                  <EmptyState message="No candidates found. Use the panel to add one." />
+                  <EmptyState message="No candidates found for this position. Use the panel to add one." />
                ) : (
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                     {candidates.map(candidate => (

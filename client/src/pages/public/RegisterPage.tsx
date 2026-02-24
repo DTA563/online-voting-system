@@ -44,7 +44,7 @@ export function RegisterPage() {
 
     // 2. User ID Format Validation
     if (!userIdPattern.test(userId)) {
-      setError("Voter ID must follow the format: LETTERS_NUMBERS (e.g. CS_1234)");
+      setError("User ID must follow the format: LETTERS_NUMBERS (e.g. CS_1234)");
       return;
     }
 
@@ -138,15 +138,15 @@ export function RegisterPage() {
               </span>
             </h1>
             
-            {/* Steps Timeline Visual */}
+            {/* Steps Timeline Visual - Updated: Changed "Verification" to "Login" */}
             <div className="space-y-4 relative">
                {/* Vertical Line */}
                <div className="absolute left-[11px] top-3 bottom-3 w-0.5 bg-white/10"></div>
                
                {[
-                  { title: 'Registration', desc: 'Enter student details', active: true },
-                  { title: 'Verification', desc: 'Admin approval required', active: false },
-                  { title: 'Access', desc: 'Vote securely', active: false }
+                  { title: 'Registration', desc: 'Enter your details', active: true },
+                  { title: 'Login', desc: 'Access your account', active: false },
+                  { title: 'Vote', desc: 'Cast your ballot', active: false }
                ].map((step, idx) => (
                   <div key={idx} className="relative flex items-center gap-4">
                      <div className={`w-6 h-6 rounded-full border-2 flex items-center justify-center z-10 bg-[#0a0a0a] transition-colors duration-500 ${step.active ? 'border-cyan-500 text-cyan-400 shadow-[0_0_10px_rgba(6,182,212,0.4)]' : 'border-white/10 text-gray-600'}`}>
@@ -224,9 +224,9 @@ export function RegisterPage() {
                   </div>
                 </div>
 
-                {/* User ID Field */}
+                {/* User ID Field - Changed label from "Student / Voter ID" to "USER ID" */}
                 <div>
-                  <label className="block text-[10px] font-bold text-gray-500 uppercase tracking-wider mb-1 ml-1">Student / Voter ID</label>
+                  <label className="block text-[10px] font-bold text-gray-500 uppercase tracking-wider mb-1 ml-1">USER ID</label>
                   <div className="relative group">
                     <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none text-gray-500 group-focus-within:text-cyan-400 transition-colors">
                       <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 6H5a2 2 0 00-2 2v9a2 2 0 002 2h14a2 2 0 002-2V8a2 2 0 00-2-2h-5m-4 0V5a2 2 0 114 0v1m-4 0h4" /></svg>
