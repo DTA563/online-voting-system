@@ -13,6 +13,7 @@ const superAdminRoutes = require('./routes/superAdminRoutes');
 const userRoutes = require('./routes/userRoutes');
 const resultRoutes = require('./routes/resultRoutes');
 const electionRoutes = require('./routes/electionRoutes');
+const positionRoutes = require('./routes/positionRoutes');
 const candidateRoutes = require('./routes/candidateRoutes');
 
 const app = express();
@@ -53,6 +54,9 @@ app.use('/api/results', resultRoutes);
 
 // Election Route 
 app.use('/api/elections', electionRoutes);
+
+// Position Route 
+app.use('/api/positions', positionRoutes);
 
 // Candidate Route
 app.use('/api/candidates', candidateRoutes);

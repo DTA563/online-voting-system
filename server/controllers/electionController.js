@@ -1,4 +1,36 @@
-const Election = require('../models/Election');
+const Election = require('../models/election');
+
+exports.getActiveElection = async (req, res) => {
+    try {
+        const userId = req.user.id;
+        const userRole = req.user.role;
+
+        // 1. Fetch elections available to this user
+        // Note: For voters, this model already filters for is_published = 1
+        const elections = await Election.getAllWithUserStatus(userId);
+        const now = new Date();
+
+        // 2. Logic: Find the one election that is currently between start and end dates
+        const active = elections.find(e => {
+            const start = new Date(e.start_date);
+            const end = new Date(e.end_date);
+            return now >= start && now <= end;
+        });
+
+        // 3. Return a clean NULL if no active election exists.
+        // This stops VotingBoothPage.tsx from trying to call /status/undefined
+        if (!active) {
+            return res.json({ status: "success", data: null });
+        }
+
+        // 4. Success: Return the single election object
+        res.json({ status: "success", data: active });
+
+    } catch (err) {
+        console.error("Get Active Election Error:", err.message);
+        res.status(500).json({ message: "Internal server error fetching active election" });
+    }
+};
 
 // getAllElections
 // Returns elections wrapped in a 'data' object to match frontend expectations.
@@ -44,7 +76,7 @@ exports.getAllElections = async (req, res) => {
 
         res.json({ status: "success", data: enrichedElections });
     } catch (err) {
-        console.error("❌ Get Elections Error:", err.message);
+        console.error("Get Elections Error:", err.message);
         res.status(500).json({ message: "Error fetching elections" });
     }
 };

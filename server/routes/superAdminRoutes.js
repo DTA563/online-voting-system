@@ -15,5 +15,6 @@ router.post('/users/reset-password', superAdminController.resetUserPassword);
 
 //  SYSTEM AUDIT 
 router.get('/logs', superAdminController.getSystemLogs);
+router.get('/logs/id', superAdminController.getSystemLogs);
 
 module.exports = router;

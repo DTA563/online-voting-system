@@ -1,40 +1,82 @@
-const Candidate = require('../models/Candidate');
-const Position = require('../models/Position');
+const Candidate = require('../models/candidate');
 
 /**
-  getCandidatesByElection
-  Fetches all candidates grouped by their positions for a specific election.
+ * getCandidates
+ * Handles both /api/candidates?position_id=X and /api/positions/:id/candidates
  */
-exports.getCandidatesByElection = async (req, res) => {
+exports.getCandidates = async (req, res) => {
     try {
-        const { electionId } = req.params;
+        const positionId = req.params.positionId || req.query.position_id;
         
-        // 1. Get all positions for this election
-        const [positions] = await db.query('SELECT * FROM positions WHERE election_id = ?', [electionId]);
-        
-        // 2. For each position, get the candidates
-        const results = await Promise.all(positions.map(async (pos) => {
-            const [candidates] = await db.query('SELECT * FROM candidates WHERE position_id = ?', [pos.position_id]);
-            return {
-                position: pos.title,
-                position_id: pos.position_id,
-                candidates: candidates
-            };
-        }));
+        if (!positionId) {
+            return res.status(400).json({ message: "Position ID is required." });
+        }
 
-        res.json(results);
+        const candidates = await Candidate.getByPosition(positionId);
+        res.json({ status: "success", data: candidates });
     } catch (err) {
-        res.status(500).json({ message: "Error fetching candidates", error: err.message });
+        console.error("Fetch Candidates Error:", err.message);
+        res.status(500).json({ message: "Error fetching candidates." });
     }
 };
 
-// addCandidate (Admin Only)
-exports.addCandidate = async (req, res) => {
+exports.getCandidateById = async (req, res) => {
     try {
-        const { fullName, positionId, manifesto, photoUrl } = req.body;
-        const candidateId = await Candidate.create(fullName, positionId, manifesto, photoUrl);
-        res.status(201).json({ message: "Candidate added", candidateId });
+        const { id } = req.params;
+        const candidate = await Candidate.getById(id);
+        if (!candidate) return res.status(404).json({ message: "Candidate not found." });
+        res.json({ status: "success", data: candidate });
     } catch (err) {
-        res.status(500).json({ message: "Error adding candidate", error: err.message });
+        res.status(500).json({ message: "Error fetching candidate." });
+    }
+};
+
+exports.createCandidate = async (req, res) => {
+    try {
+        const positionId = req.params.positionId || req.body.position_id;
+        const { full_name, fullName, manifesto, photo_url, photoUrl } = req.body;
+
+        const name = full_name || fullName;
+        const photo = photo_url || photoUrl;
+
+        if (!positionId || !name) {
+            return res.status(400).json({ message: "Position ID and Full Name are required." });
+        }
+
+        const candidateId = await Candidate.create(name, positionId, manifesto, photo);
+        const newCandidate = await Candidate.getById(candidateId);
+        
+        res.status(201).json({ status: "success", data: newCandidate });
+    } catch (err) {
+        res.status(500).json({ message: "Error adding candidate." });
+    }
+};
+
+exports.updateCandidate = async (req, res) => {
+    try {
+        const { id } = req.params;
+        const { full_name, fullName, manifesto, photo_url, photoUrl } = req.body;
+
+        const data = {
+            full_name: full_name || fullName,
+            manifesto: manifesto,
+            photo_url: photo_url || photoUrl
+        };
+
+        await Candidate.update(id, data);
+        const updated = await Candidate.getById(id);
+        res.json({ status: "success", data: updated });
+    } catch (err) {
+        res.status(500).json({ message: "Error updating candidate." });
+    }
+};
+
+exports.deleteCandidate = async (req, res) => {
+    try {
+        const { id } = req.params;
+        await Candidate.delete(id);
+        res.json({ status: "success", message: "Candidate deleted." });
+    } catch (err) {
+        res.status(500).json({ message: "Error deleting candidate." });
     }
 };

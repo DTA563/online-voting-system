@@ -1,38 +1,71 @@
 const Vote = require('../models/vote');
 
-exports.castVote = async (req, res) => {
+/**
+ * checkVoterStatus
+ * Handles the handshake to see if a voter has already participated.
+ */
+exports.checkVoterStatus = async (req, res) => {
     try {
-        const { candidateId, electionId } = req.body;
-        const userId = req.user.id; // From Auth Middleware
+        const { electionId } = req.params;
+        const userId = req.user.id;
 
-        // 1. CRITICAL: Check the Master List (Registry)
-        const isEligible = await Vote.checkEligibility(userId, electionId);
-        if (!isEligible) {
-            return res.status(403).json({ 
-                message: "Permission Denied: You are not registered to vote in this election." 
-            });
+        // FIX 2: Silent guard for race conditions. 
+        // If frontend passes 'undefined', we return 200 OK with 'not voted' status.
+        if (!electionId || electionId === 'undefined' || electionId === 'null') {
+            return res.json({ status: "success", data: { has_voted: false } });
         }
 
-        // 2. Check if already voted
         const status = await Vote.checkVoterStatus(userId, electionId);
-        if (status && status.has_voted) {
-            return res.status(400).json({ message: "You have already cast your vote for this election." });
-        }
-
-        // 3. Create a "Time Bucket" (Security feature: round to the nearest hour)
-        const now = new Date();
-        now.setMinutes(0, 0, 0); // Anonymity: hides the exact second the vote was cast
-        const timeBucket = now;
-
-        // 4. Save Vote
-        await Vote.castBallot(userId, electionId, candidateId, timeBucket);
-
-        // WRAP IN DATA: Required by frontend votes.api.ts
         res.json({ 
             status: "success", 
-            data: { message: "Vote cast successfully." } 
+            data: { 
+                has_voted: !!status?.has_voted, 
+                voted_at: status?.voted_at || null 
+            } 
         });
     } catch (err) {
-        res.status(500).json({ message: "Error processing vote." });
+        console.error("Voter Status Check Crash:", err.message);
+        res.status(500).json({ message: "Database error checking status." });
+    }
+};
+
+/**
+ * castVote
+ * Handles the submission of a full ballot (multiple positions).
+ */
+exports.castVote = async (req, res) => {
+    try {
+        // FIX 3: Extracted election_id (snake_case) to match frontend payload
+        const { election_id, votes } = req.body;
+        const userId = req.user.id;
+
+        if (!election_id || !votes || !Array.isArray(votes)) {
+            return res.status(400).json({ message: "Invalid ballot format received." });
+        }
+
+        // 1. Eligibility Check
+        const isEligible = await Vote.checkEligibility(userId, election_id);
+        if (!isEligible) {
+            return res.status(403).json({ message: "You are not registered for this election." });
+        }
+
+        // 2. Duplicate Prevention
+        const status = await Vote.checkVoterStatus(userId, election_id);
+        if (status && status.has_voted) {
+            return res.status(400).json({ message: "Your ballot has already been cast." });
+        }
+
+        // 3. Secure Time Bucketing
+        const timeBucket = new Date();
+        timeBucket.setMinutes(0, 0, 0);
+
+        // 4. Record Multi-Position Ballot
+        await Vote.castBallot(userId, election_id, votes, timeBucket);
+
+        res.json({ status: "success", data: { message: "Ballot cast successfully." } });
+
+    } catch (err) {
+        console.error("🔥 Cast Vote Crash:", err.message);
+        res.status(500).json({ message: "Internal server error during submission." });
     }
 };

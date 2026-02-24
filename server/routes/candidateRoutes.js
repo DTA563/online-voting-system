@@ -4,10 +4,18 @@ const candidateController = require('../controllers/candidateController');
 const authMiddleware = require('../middleware/authMiddleware');
 const adminMiddleware = require('../middleware/adminMiddleware');
 
-// Voters can view candidates for an election
-router.get('/election/:electionId', authMiddleware, candidateController.getCandidatesByElection);
+// General login required
+router.use(authMiddleware);
 
-// Only Admins can add candidates
-router.post('/', authMiddleware, adminMiddleware, candidateController.addCandidate);
+// GET /api/candidates (Supports ?position_id=X)
+router.get('/', candidateController.getCandidates);
+
+// GET /api/candidates/:id
+router.get('/:id', candidateController.getCandidateById);
+
+// Admin Only
+router.post('/', adminMiddleware, candidateController.createCandidate);
+router.put('/:id', adminMiddleware, candidateController.updateCandidate);
+router.delete('/:id', adminMiddleware, candidateController.deleteCandidate);
 
 module.exports = router;

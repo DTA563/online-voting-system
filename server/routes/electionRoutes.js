@@ -1,18 +1,34 @@
 const express = require('express');
 const router = express.Router();
 const electionController = require('../controllers/electionController');
+const positionController = require('../controllers/positionController');
 const authMiddleware = require('../middleware/authMiddleware');
 const adminMiddleware = require('../middleware/adminMiddleware');
 
-// VOTER & ADMIN SHARED ROUTES 
-router.get('/', authMiddleware, electionController.getAllElections);
-router.get('/active', authMiddleware, electionController.getAllElections);
+// Standard security for all election routes
+router.use(authMiddleware);
 
-// ADMIN ONLY ROUTES 
-// POST 
-router.post('/', authMiddleware, adminMiddleware, electionController.createElection);
+/**
+ * FIX 1: Map /active to getActiveElection.
+ * This ensures the frontend receives ONE election object, not a list.
+ */
+router.get('/active', electionController.getActiveElection);
 
-// DELETE 
-router.delete('/:id', authMiddleware, adminMiddleware, electionController.deleteElection);
+/**
+ * Standard GET /api/elections
+ */
+router.get('/', electionController.getAllElections);
+
+/**
+ * Admin Management
+ */
+router.post('/', adminMiddleware, electionController.createElection);
+router.delete('/:id', adminMiddleware, electionController.deleteElection);
+
+/**
+ * Nested Position Resources
+ */
+router.get('/:electionId/positions', positionController.getPositions);
+router.post('/:electionId/positions', adminMiddleware, positionController.createPosition);
 
 module.exports = router;
