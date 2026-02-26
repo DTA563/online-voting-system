@@ -10,7 +10,8 @@ const Icons = {
   Users: () => <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M13 7a4 4 0 11-8 0 4 4 0 018 0z" /></svg>,
   Shield: () => <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z" /></svg>,
   Alert: () => <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" /></svg>,
-  Briefcase: () => <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M21 13.255A23.931 23.931 0 0112 15c-3.183 0-6.22-.62-9-1.745M16 6V4a2 2 0 00-2-2h-4a2 2 0 00-2 2v2m4 6h.01M5 20h14a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" /></svg>
+  Briefcase: () => <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M21 13.255A23.931 23.931 0 0112 15c-3.183 0-6.22-.62-9-1.745M16 6V4a2 2 0 00-2-2h-4a2 2 0 00-2 2v2m4 6h.01M5 20h14a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" /></svg>,
+  Refresh: () => <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" /></svg>
 };
 
 export function AccountOversightPage() {
@@ -21,6 +22,8 @@ export function AccountOversightPage() {
   const [searchQuery, setSearchQuery] = useState('');
   const [actionLoading, setActionLoading] = useState<string | null>(null);
   const [mounted, setMounted] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [debugInfo, setDebugInfo] = useState<string>('');
 
   useEffect(() => {
     loadUsers();
@@ -30,10 +33,24 @@ export function AccountOversightPage() {
 
   const loadUsers = async () => {
     try {
+      setIsLoading(true);
+      setError(null);
+      setDebugInfo('');
+      console.log('Fetching users...');
       const data = await adminApi.getAllUsers();
-      setUsers(data);
-    } catch (err) {
+      console.log('Users received:', data);
+      
+      if (Array.isArray(data)) {
+        setUsers(data);
+        setDebugInfo(`Loaded ${data.length} users successfully`);
+      } else {
+        console.error('Data is not an array:', data);
+        setError('Received invalid data format from server');
+        setUsers([]);
+      }
+    } catch (err: any) {
       console.error('Failed to load users:', err);
+      setError(err.response?.data?.message || 'Failed to load users. Please try again.');
     } finally {
       setIsLoading(false);
     }
@@ -43,6 +60,8 @@ export function AccountOversightPage() {
     if (!window.confirm(`Are you sure you want to ${action} ${user.full_name}?`)) return;
     
     setActionLoading(user.user_id);
+    setError(null);
+    
     try {
       if (action === 'reset') {
         const res = await adminApi.resetPassword(user.user_id);
@@ -56,7 +75,9 @@ export function AccountOversightPage() {
         setUsers(prev => prev.map(u => u.user_id === user.user_id ? { ...u, status: newStatus } : u));
       }
     } catch (err: any) {
-      alert(err.response?.data?.message || `Failed to ${action} user`);
+      const errorMsg = err.response?.data?.message || `Failed to ${action} user`;
+      setError(errorMsg);
+      alert(errorMsg);
     } finally {
       setActionLoading(null);
     }
@@ -77,8 +98,10 @@ export function AccountOversightPage() {
   const stats = useMemo(() => ({
     totalSuperAdmins: users.filter(u => u.role === 'super_admin').length,
     totalAdmins: users.filter(u => u.role === 'admin').length,
+    totalVoters: users.filter(u => u.role === 'voter').length,
     disabled: users.filter(u => u.status === 'deactivated').length,
-    pending: users.filter(u => !u.is_verified).length
+    pending: users.filter(u => !u.is_verified).length,
+    active: users.filter(u => u.status === 'active').length
   }), [users]);
 
   // --- Loading Skeleton ---
@@ -99,8 +122,6 @@ export function AccountOversightPage() {
     );
   }
 
-
-
   return (
     <>
       <style>{`
@@ -116,16 +137,46 @@ export function AccountOversightPage() {
 
         <div className="max-w-7xl mx-auto px-6 lg:px-8 py-8 space-y-8">
            {/* Header */}
-           <div className={`opacity-0 ${mounted ? 'animate-fade-up' : ''}`}>
-               <h2 className="text-xs font-bold text-blue-500 uppercase tracking-widest mb-2">Personnel Management</h2>
-               <h1 className="text-3xl font-bold text-white tracking-tight">Account Oversight</h1>
-               <p className="text-zinc-400 mt-2 max-w-lg text-sm">Manage system access hierarchies, review roles, and control entity statuses.</p>
+           <div className={`flex justify-between items-start opacity-0 ${mounted ? 'animate-fade-up' : ''}`}>
+              <div>
+                <h2 className="text-xs font-bold text-blue-500 uppercase tracking-widest mb-2">Personnel Management</h2>
+                <h1 className="text-3xl font-bold text-white tracking-tight">Account Oversight</h1>
+                <p className="text-zinc-400 mt-2 max-w-lg text-sm">Manage system access hierarchies, review roles, and control entity statuses.</p>
+              </div>
+              <button 
+                onClick={loadUsers}
+                className="p-3 rounded-xl bg-zinc-900 border border-zinc-800 hover:border-blue-500/50 hover:text-blue-500 transition-all text-zinc-400"
+                title="Refresh users"
+              >
+                <Icons.Refresh />
+              </button>
            </div>
+
+           {/* Error Display */}
+           {error && (
+             <div className="bg-red-500/10 border border-red-500/20 rounded-xl p-4 text-red-200 text-sm">
+               {error}
+             </div>
+           )}
+
+           {/* Debug Info - Remove after fixing */}
+           {debugInfo && (
+             <div className="bg-blue-500/10 border border-blue-500/20 rounded-xl p-4 text-blue-200 text-sm">
+               {debugInfo}
+             </div>
+           )}
 
            {/* Stats Cards */}
            <div className={`grid grid-cols-1 md:grid-cols-4 gap-4 opacity-0 ${mounted ? 'animate-fade-up' : ''}`} style={{ animationDelay: '100ms' }}>
+              <StatBox label="Total Users" value={users.length} icon={<Icons.Users />} />
               <StatBox label="Super Admins" value={stats.totalSuperAdmins} icon={<Icons.Shield />} />
               <StatBox label="Administrators" value={stats.totalAdmins} icon={<Icons.Briefcase />} highlight />
+              <StatBox label="Active Voters" value={stats.totalVoters} icon={<Icons.Users />} />
+           </div>
+
+           {/* Second Row Stats */}
+           <div className={`grid grid-cols-1 md:grid-cols-3 gap-4 opacity-0 ${mounted ? 'animate-fade-up' : ''}`} style={{ animationDelay: '150ms' }}>
+              <StatBox label="Active Accounts" value={stats.active} icon={<Icons.Check />} valueColor="text-emerald-400" />
               <StatBox label="Disabled Users" value={stats.disabled} icon={<Icons.Ban />} valueColor="text-rose-400" />
               <StatBox label="Pending Review" value={stats.pending} icon={<Icons.Alert />} valueColor="text-blue-400" />
            </div>
@@ -169,7 +220,7 @@ export function AccountOversightPage() {
               </div>
               
               <div className="text-xs font-mono text-zinc-500 px-3 py-1.5 border border-zinc-800 rounded-lg bg-zinc-900/50">
-                 {filteredUsers.length} RECORDS FOUND
+                 {filteredUsers.length} OF {users.length} RECORDS
               </div>
            </div>
 
@@ -187,93 +238,98 @@ export function AccountOversightPage() {
                      </tr>
                   </thead>
                   <tbody className="text-sm divide-y divide-white/5">
-                     {filteredUsers.map((user) => (
-                       <tr key={user.user_id} className="hover:bg-white/2 transition-colors group">
-                          <td className="px-6 py-4">
-                             <div className="flex items-center gap-3">
-                                <div className={`w-8 h-8 rounded-lg flex items-center justify-center text-[10px] font-bold border transition-colors ${
-                                   user.role === 'super_admin' ? 'bg-blue-500/10 text-blue-500 border-blue-500/20' : 
-                                   'bg-zinc-800 text-zinc-400 border-zinc-700'
-                                }`}>
-                                   {user.full_name.charAt(0)}
-                                </div>
-                                <div>
-                                   <div className="font-medium text-zinc-200 group-hover:text-white transition-colors">{user.full_name}</div>
-                                   <div className="text-[10px] text-zinc-500 font-mono">{user.user_id}</div>
-                                </div>
-                             </div>
-                          </td>
-                          <td className="px-6 py-4">
-                             <span className={`inline-flex items-center px-2.5 py-1 rounded text-[10px] font-bold uppercase tracking-wide border
-                               ${user.role === 'super_admin' ? 'bg-blue-500/10 text-blue-400 border-blue-500/20' : 
-                                 user.role === 'admin' ? 'bg-zinc-100/10 text-zinc-300 border-zinc-500/20' : 
-                                 'bg-white/5 text-zinc-500 border-white/5'}`}>
-                               {user.role.replace('_', ' ')}
-                             </span>
-                          </td>
-                          <td className="px-6 py-4">
-                             {user.status === 'active' ? (
-                                <span className="inline-flex items-center gap-1.5 text-emerald-400 text-[10px] font-bold uppercase tracking-wider">
-                                   <span className="w-1.5 h-1.5 bg-emerald-400 rounded-full animate-pulse" /> Active
-                                </span>
-                             ) : (
-                                <span className="inline-flex items-center gap-1.5 text-rose-400 text-[10px] font-bold uppercase tracking-wider">
-                                   <span className="w-1.5 h-1.5 bg-rose-400 rounded-full" /> Disabled
-                                </span>
-                             )}
-                          </td>
-                          <td className="px-6 py-4">
-                             {user.last_login ? (
-                                <div className="flex flex-col">
-                                   <span className="text-zinc-400 text-xs">{new Date(user.last_login).toLocaleDateString()}</span>
-                                   <span className="text-[10px] text-zinc-600 font-mono">{new Date(user.last_login).toLocaleTimeString()}</span>
-                                </div>
-                             ) : (
-                                <span className="text-zinc-600 text-xs italic">Never</span>
-                             )}
-                          </td>
-                          <td className="px-6 py-4 text-right">
-                             {user.role === 'super_admin' ? (
-                                <span className="text-[10px] uppercase text-zinc-600 font-bold tracking-wider flex justify-end items-center gap-1">
-                                    <Icons.Shield /> Protected
-                                </span>
-                             ) : (
-                                <div className="flex justify-end gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
-                                   <button 
-                                     onClick={() => handleAction('reset', user)}
-                                     disabled={!!actionLoading}
-                                     className="p-1.5 rounded bg-zinc-800 text-zinc-400 hover:text-blue-400 hover:bg-zinc-700 transition-all border border-transparent hover:border-blue-500/30"
-                                     title="Reset Password"
-                                   >
-                                      <Icons.Key />
-                                   </button>
-                                   
-                                   {user.status === 'active' ? (
-                                      <button 
-                                        onClick={() => handleAction('deactivate', user)}
-                                        disabled={!!actionLoading}
-                                        className="p-1.5 rounded bg-zinc-800 text-zinc-400 hover:text-rose-400 hover:bg-zinc-700 transition-all border border-transparent hover:border-rose-500/30"
-                                        title="Disable Account"
-                                      >
-                                        <Icons.Ban />
-                                      </button>
-                                   ) : (
-                                      <button 
-                                        onClick={() => handleAction('activate', user)}
-                                        disabled={!!actionLoading}
-                                        className="p-1.5 rounded bg-zinc-800 text-zinc-400 hover:text-emerald-400 hover:bg-zinc-700 transition-all border border-transparent hover:border-emerald-500/30"
-                                        title="Activate Account"
-                                      >
-                                        <Icons.Check />
-                                      </button>
-                                   )}
-                                </div>
-                             )}
-                          </td>
+                     {filteredUsers.length > 0 ? (
+                       filteredUsers.map((user) => (
+                         <tr key={user.user_id} className="hover:bg-white/2 transition-colors group">
+                            <td className="px-6 py-4">
+                               <div className="flex items-center gap-3">
+                                  <div className={`w-8 h-8 rounded-lg flex items-center justify-center text-[10px] font-bold border transition-colors ${
+                                     user.role === 'super_admin' ? 'bg-blue-500/10 text-blue-500 border-blue-500/20' : 
+                                     'bg-zinc-800 text-zinc-400 border-zinc-700'
+                                  }`}>
+                                     {user.full_name?.charAt(0) || '?'}
+                                  </div>
+                                  <div>
+                                     <div className="font-medium text-zinc-200 group-hover:text-white transition-colors">{user.full_name}</div>
+                                     <div className="text-[10px] text-zinc-500 font-mono">{user.user_id}</div>
+                                  </div>
+                               </div>
+                            </td>
+                            <td className="px-6 py-4">
+                               <span className={`inline-flex items-center px-2.5 py-1 rounded text-[10px] font-bold uppercase tracking-wide border
+                                 ${user.role === 'super_admin' ? 'bg-blue-500/10 text-blue-400 border-blue-500/20' : 
+                                   user.role === 'admin' ? 'bg-zinc-100/10 text-zinc-300 border-zinc-500/20' : 
+                                   'bg-white/5 text-zinc-500 border-white/5'}`}>
+                                 {user.role?.replace('_', ' ') || 'unknown'}
+                               </span>
+                            </td>
+                            <td className="px-6 py-4">
+                               {user.status === 'active' ? (
+                                  <span className="inline-flex items-center gap-1.5 text-emerald-400 text-[10px] font-bold uppercase tracking-wider">
+                                     <span className="w-1.5 h-1.5 bg-emerald-400 rounded-full animate-pulse" /> Active
+                                  </span>
+                               ) : (
+                                  <span className="inline-flex items-center gap-1.5 text-rose-400 text-[10px] font-bold uppercase tracking-wider">
+                                     <span className="w-1.5 h-1.5 bg-rose-400 rounded-full" /> Disabled
+                                  </span>
+                               )}
+                            </td>
+                            <td className="px-6 py-4">
+                               {user.last_login ? (
+                                  <div className="flex flex-col">
+                                     <span className="text-zinc-400 text-xs">{new Date(user.last_login).toLocaleDateString()}</span>
+                                     <span className="text-[10px] text-zinc-600 font-mono">{new Date(user.last_login).toLocaleTimeString()}</span>
+                                  </div>
+                               ) : (
+                                  <span className="text-zinc-600 text-xs italic">Never</span>
+                               )}
+                            </td>
+                            <td className="px-6 py-4 text-right">
+                               {user.role === 'super_admin' ? (
+                                  <span className="text-[10px] uppercase text-zinc-600 font-bold tracking-wider flex justify-end items-center gap-1">
+                                      <Icons.Shield /> Protected
+                                  </span>
+                               ) : (
+                                  <div className="flex justify-end gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
+                                     <button 
+                                       onClick={() => handleAction('reset', user)}
+                                       disabled={actionLoading === user.user_id}
+                                       className="p-1.5 rounded bg-zinc-800 text-zinc-400 hover:text-blue-400 hover:bg-zinc-700 transition-all border border-transparent hover:border-blue-500/30 disabled:opacity-50 disabled:cursor-not-allowed"
+                                       title="Reset Password"
+                                     >
+                                        <Icons.Key />
+                                     </button>
+                                     
+                                     {user.status === 'active' ? (
+                                        <button 
+                                          onClick={() => handleAction('deactivate', user)}
+                                          disabled={actionLoading === user.user_id}
+                                          className="p-1.5 rounded bg-zinc-800 text-zinc-400 hover:text-rose-400 hover:bg-zinc-700 transition-all border border-transparent hover:border-rose-500/30 disabled:opacity-50 disabled:cursor-not-allowed"
+                                          title="Disable Account"
+                                        >
+                                          <Icons.Ban />
+                                        </button>
+                                     ) : (
+                                        <button 
+                                          onClick={() => handleAction('activate', user)}
+                                          disabled={actionLoading === user.user_id}
+                                          className="p-1.5 rounded bg-zinc-800 text-zinc-400 hover:text-emerald-400 hover:bg-zinc-700 transition-all border border-transparent hover:border-emerald-500/30 disabled:opacity-50 disabled:cursor-not-allowed"
+                                          title="Activate Account"
+                                        >
+                                          <Icons.Check />
+                                        </button>
+                                     )}
+                                  </div>
+                               )}
+                            </td>
+                         </tr>
+                       ))
+                     ) : (
+                       <tr>
+                         <td colSpan={5} className="px-6 py-12 text-center text-zinc-600 italic">
+                           {users.length === 0 ? 'No users found in the system.' : 'No personnel found matching the selected criteria.'}
+                         </td>
                        </tr>
-                     ))}
-                     {filteredUsers.length === 0 && (
-                       <tr><td colSpan={5} className="px-6 py-12 text-center text-zinc-600 italic">No personnel found maintaining expected criteria.</td></tr>
                      )}
                   </tbody>
                </table>
