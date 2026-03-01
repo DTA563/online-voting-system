@@ -23,6 +23,7 @@ router.get('/', electionController.getAllElections);
  * Admin Management
  */
 router.post('/', adminMiddleware, electionController.createElection);
+router.put('/:id', adminMiddleware, electionController.updateElection);
 router.delete('/:id', adminMiddleware, electionController.deleteElection);
 
 /**

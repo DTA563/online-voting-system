@@ -124,9 +124,6 @@ export function ManageVotersPage() {
           {/* --- Header --- */}
           <header className={`flex flex-col md:flex-row md:items-end justify-between gap-6 pb-6 border-b border-white/5 opacity-0 ${mounted ? 'animate-enter' : ''}`}>
             <div>
-              <Link to="/admin" className="flex items-center gap-2 text-gray-500 hover:text-white transition-colors text-sm mb-2 group">
-                <Icons.Back /> <span className="group-hover:translate-x-1 transition-transform">Back to Dashboard</span>
-              </Link>
               <h1 className="text-3xl font-bold tracking-tight text-white">
                 Voter Database
               </h1>

@@ -5,6 +5,26 @@ import { electionsApi } from '../../api';
 import api from '../../api/axios';
 import { Election } from '../../types';
 
+// --- Helper Functions for Timezones ---
+const formatToLocalInput = (utcDateString: string) => {
+  if (!utcDateString) return '';
+  const date = new Date(utcDateString);
+  const tzOffset = date.getTimezoneOffset() * 60000; 
+  const localISOTime = (new Date(date.getTime() - tzOffset)).toISOString().slice(0, 16);
+  return localISOTime;
+};
+
+// Calculates real-time status based purely on dates with explicit TS return type
+const getCalculatedStatus = (startDateStr: string, endDateStr: string): 'upcoming' | 'active' | 'completed' => {
+  const now = new Date();
+  const start = new Date(startDateStr);
+  const end = new Date(endDateStr);
+
+  if (now < start) return 'upcoming';
+  if (now >= start && now <= end) return 'active';
+  return 'completed';
+};
+
 // --- Icons (Consistent Set) ---
 const Icons = {
   Back: () => <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M10 19l-7-7m0 0l7-7m-7 7h18" /></svg>,
@@ -17,6 +37,7 @@ const Icons = {
   Upload: () => <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12" /></svg>,
   FileText: () => <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" /></svg>,
   Check: () => <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M5 13l4 4L19 7" /></svg>,
+  Alert: () => <svg className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" /></svg>
 };
 
 export function ManageElectionsPage() {
@@ -29,13 +50,15 @@ export function ManageElectionsPage() {
   const [showForm, setShowForm] = useState(false);
   const [editingElection, setEditingElection] = useState<Election | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
+
+  // Delete Modal State
+  const [deleteModal, setDeleteModal] = useState<{ isOpen: boolean; id: number | null }>({ isOpen: false, id: null });
   
   // Form Data
   const [formData, setFormData] = useState({
     title: '',
     startDate: '',
-    endDate: '',
-    status: 'upcoming' as 'upcoming' | 'active' | 'completed'
+    endDate: ''
   });
 
   // --- Effects ---
@@ -47,24 +70,10 @@ export function ManageElectionsPage() {
 
  const loadElections = async () => {
   try {
-    console.log('Fetching elections in ManageElectionsPage...');
-    
-    // Make a direct API call to see the raw response
-    const rawResponse = await api.get('/elections', {
-      params: { _t: new Date().getTime() }
-    });
-    console.log('RAW API Response:', rawResponse);
-    console.log('RAW API Response data:', rawResponse.data);
-    
-    // Now try using the api function
     const data = await electionsApi.getAll();
-    console.log('Processed data from electionsApi:', data);
-    
     if (Array.isArray(data)) {
       setElections(data);
-      console.log('Elections set in state:', data.length);
     } else {
-      console.error('Data is not an array:', data);
       setElections([]);
     }
   } catch (err: any) {
@@ -78,12 +87,14 @@ export function ManageElectionsPage() {
   // --- Handlers ---
   const handleEdit = (election: Election) => {
     setEditingElection(election);
+    
+    // Fix timezone offset for the input fields
     setFormData({
       title: election.title,
-      startDate: election.start_date.slice(0, 16),
-      endDate: election.end_date.slice(0, 16),
-      status: election.status
+      startDate: formatToLocalInput(election.start_date),
+      endDate: formatToLocalInput(election.end_date)
     });
+    
     setShowForm(true);
     window.scrollTo({ top: 0, behavior: 'smooth' });
   };
@@ -91,18 +102,22 @@ export function ManageElectionsPage() {
   const closeForm = () => {
     setShowForm(false);
     setEditingElection(null);
-    setFormData({ title: '', startDate: '', endDate: '', status: 'upcoming' });
+    setFormData({ title: '', startDate: '', endDate: '' });
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setIsSubmitting(true);
+    
     try {
+      // Calculate dynamic status based on dates so Dashboard recognizes it
+      const calculatedStatus = getCalculatedStatus(formData.startDate, formData.endDate);
+
       const payload = {
         title: formData.title,
         start_date: formData.startDate,
         end_date: formData.endDate,
-        status: formData.status,
+        status: calculatedStatus 
       };
 
       if (editingElection) {
@@ -120,12 +135,21 @@ export function ManageElectionsPage() {
     }
   };
 
-  const handleDelete = async (id: number) => {
-    if (!confirm('Are you sure? This will delete all votes associated with this election.')) return;
+  // --- Delete Modal Handlers ---
+  const confirmDelete = (id: number) => {
+    setDeleteModal({ isOpen: true, id });
+  };
+
+  const executeDelete = async () => {
+    if (!deleteModal.id) return;
     try {
-      await electionsApi.delete(id);
+      await electionsApi.delete(deleteModal.id);
       await loadElections();
-    } catch (err) { console.error(err); }
+      setDeleteModal({ isOpen: false, id: null });
+    } catch (err) { 
+      console.error(err); 
+      alert("Failed to delete election.");
+    }
   };
 
   // --- Voter Registry Upload ---
@@ -144,11 +168,10 @@ export function ManageElectionsPage() {
     const reader = new FileReader();
     reader.onload = (event) => {
       const text = event.target?.result as string;
-      // Parse CSV/TXT — expects one ID per line (or comma-separated)
       const ids = text
         .split(/[\n,\r]+/)
         .map(id => id.trim())
-        .filter(id => id.length > 0 && id !== 'user_id' && id !== 'id' && id !== 'student_id'); // skip header rows
+        .filter(id => id.length > 0 && id !== 'user_id' && id !== 'id' && id !== 'student_id');
       setParsedIds(ids);
       setUploadResult(null);
     };
@@ -180,10 +203,11 @@ export function ManageElectionsPage() {
     if (fileInputRef.current) fileInputRef.current.value = '';
   };
 
-
-
-  // Calculate stats
-  const activeCount = elections.filter(e => e.status === 'active').length;
+  // Calculate stats based on real time
+  const activeCount = elections.filter(e => {
+      const calcStatus = getCalculatedStatus(e.start_date, e.end_date);
+      return calcStatus === 'active';
+  }).length;
 
   // --- Loading Skeleton ---
   if (isLoading) {
@@ -216,6 +240,35 @@ export function ManageElectionsPage() {
         .delay-200 { animation-delay: 200ms; }
       `}</style>
 
+      {/* --- Delete Confirmation Modal --- */}
+      {deleteModal.isOpen && (
+        <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/80 backdrop-blur-sm p-4 animate-in fade-in duration-200">
+          <div className="bg-[#0a0a0a] border border-white/10 rounded-2xl p-6 max-w-sm w-full shadow-2xl animate-enter">
+            <div className="w-12 h-12 rounded-full bg-red-500/10 border border-red-500/20 text-red-500 flex items-center justify-center mb-4">
+              <Icons.Alert />
+            </div>
+            <h3 className="text-xl font-bold text-white mb-2">Delete Election?</h3>
+            <p className="text-gray-400 text-sm mb-6 leading-relaxed">
+              Are you sure? This will permanently delete all votes, candidates, and registry data associated with this election. This action cannot be undone.
+            </p>
+            <div className="flex gap-3">
+              <button 
+                onClick={() => setDeleteModal({ isOpen: false, id: null })} 
+                className="flex-1 px-4 py-2.5 rounded-xl bg-white/5 hover:bg-white/10 border border-white/10 text-white font-medium transition-colors"
+              >
+                Cancel
+              </button>
+              <button 
+                onClick={executeDelete} 
+                className="flex-1 px-4 py-2.5 rounded-xl bg-red-600 hover:bg-red-500 text-white font-bold transition-colors shadow-lg shadow-red-600/20"
+              >
+                Delete
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
       <div className="text-white font-sans selection:bg-blue-500/30 pb-12">
 
         <div className="relative z-10 max-w-7xl mx-auto p-6 lg:p-10 space-y-10">
@@ -223,9 +276,6 @@ export function ManageElectionsPage() {
           {/* --- Header --- */}
           <header className={`flex flex-col md:flex-row md:items-end justify-between gap-6 pb-6 border-b border-white/5 opacity-0 ${mounted ? 'animate-enter' : ''}`}>
             <div>
-              <Link to="/admin" className="flex items-center gap-2 text-gray-500 hover:text-white transition-colors text-sm mb-2 group">
-                 <Icons.Back /> <span className="group-hover:translate-x-1 transition-transform">Back to Dashboard</span>
-              </Link>
               <h1 className="text-3xl font-bold tracking-tight text-white bg-clip-text">
                 Election Registry
               </h1>
@@ -278,7 +328,7 @@ export function ManageElectionsPage() {
                     </div>
 
                     <div>
-                      <label className="text-xs font-bold text-gray-500 uppercase tracking-wider mb-2 block">Start Date (UTC)</label>
+                      <label className="text-xs font-bold text-gray-500 uppercase tracking-wider mb-2 block">Start Date & Time</label>
                       <input 
                         type="datetime-local" 
                         required
@@ -289,7 +339,7 @@ export function ManageElectionsPage() {
                     </div>
 
                     <div>
-                      <label className="text-xs font-bold text-gray-500 uppercase tracking-wider mb-2 block">End Date (UTC)</label>
+                      <label className="text-xs font-bold text-gray-500 uppercase tracking-wider mb-2 block">End Date & Time</label>
                       <input 
                         type="datetime-local" 
                         required
@@ -297,26 +347,6 @@ export function ManageElectionsPage() {
                         value={formData.endDate}
                         onChange={e => setFormData({...formData, endDate: e.target.value})}
                       />
-                    </div>
-
-                    <div className="md:col-span-2">
-                       <label className="text-xs font-bold text-gray-500 uppercase tracking-wider mb-2 block">Initial Status</label>
-                       <div className="grid grid-cols-3 gap-3">
-                          {(['upcoming', 'active', 'completed'] as const).map((s) => (
-                            <button
-                              key={s}
-                              type="button"
-                              onClick={() => setFormData({...formData, status: s})}
-                              className={`py-3 rounded-xl border text-sm font-medium transition-all capitalize ${
-                                formData.status === s 
-                                  ? 'bg-blue-600/20 border-blue-500 text-blue-400' 
-                                  : 'bg-black/30 border-white/10 text-gray-500 hover:bg-white/5'
-                              }`}
-                            >
-                              {s}
-                            </button>
-                          ))}
-                       </div>
                     </div>
 
                     <div className="md:col-span-2 pt-4 border-t border-white/5 flex gap-3">
@@ -454,7 +484,7 @@ export function ManageElectionsPage() {
                         key={election.election_id} 
                         election={election} 
                         onEdit={() => handleEdit(election)}
-                        onDelete={() => handleDelete(election.election_id)}
+                        onDelete={() => confirmDelete(election.election_id)}
                         onUploadVoters={() => { setUploadElectionId(election.election_id); window.scrollTo({ top: 0, behavior: 'smooth' }); }}
                       />
                     ))}
@@ -472,8 +502,10 @@ export function ManageElectionsPage() {
 // --- Sub-Components ---
 
 function ElectionCard({ election, onEdit, onDelete, onUploadVoters }: { election: Election, onEdit: () => void, onDelete: () => void, onUploadVoters: () => void }) {
-  const isCompleted = election.status === 'completed';
-  const isActive = election.status === 'active';
+  // Calculate real status based purely on dates
+  const calculatedStatus = getCalculatedStatus(election.start_date, election.end_date);
+  const isCompleted = calculatedStatus === 'completed';
+  const isActive = calculatedStatus === 'active';
 
   return (
     <div className={`group relative bg-[#0a0a0a] border rounded-2xl p-6 transition-all duration-300 hover:-translate-y-1 overflow-hidden
@@ -484,13 +516,10 @@ function ElectionCard({ election, onEdit, onDelete, onUploadVoters }: { election
        
        <div className="relative z-10 flex flex-col h-full">
          
-         {/* Top Row: Status & Title */}
+         {/* Top Row: Status & Actions */}
          <div className="flex justify-between items-start mb-4">
-            <StatusBadge status={election.status} />
+            <StatusBadge status={calculatedStatus} />
             <div className="flex gap-1">
-              <button onClick={onUploadVoters} title="Upload Voter List" className="p-2 rounded-lg hover:bg-emerald-900/20 text-gray-400 hover:text-emerald-400 transition-colors">
-                <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12" /></svg>
-              </button>
               <button onClick={onEdit} className="p-2 rounded-lg hover:bg-white/10 text-gray-400 hover:text-white transition-colors"><Icons.Edit /></button>
               <button onClick={onDelete} className="p-2 rounded-lg hover:bg-red-900/20 text-gray-400 hover:text-red-400 transition-colors"><Icons.Trash /></button>
             </div>

@@ -11,30 +11,30 @@ export function VoteSuccessPage() {
 
   return (
     <div className="flex-1 flex items-center justify-center p-6">
-      <div className={`w-full max-w-lg transform transition-all duration-700 ease-out ${mounted ? 'translate-y-0 opacity-100 scale-100' : 'translate-y-8 opacity-0 scale-95'}`}>
-        <div className="rounded-2xl p-8 md:p-12 text-center" style={{ backgroundColor: 'var(--v-card)', border: '1px solid var(--v-border)' }}>
+      <div className={`w-full max-w-md transform transition-all duration-700 ease-out ${mounted ? 'translate-y-0 opacity-100 scale-100' : 'translate-y-8 opacity-0 scale-95'}`}>
+        <div className="rounded-2xl p-6 md:p-8 text-center" style={{ backgroundColor: 'var(--v-card)', border: '1px solid var(--v-border)' }}>
 
           {/* Success Icon */}
-          <div className="w-24 h-24 mx-auto mb-8">
+          <div className="w-16 h-16 mx-auto mb-5">
             <div className="w-full h-full bg-linear-to-br from-emerald-500 to-teal-600 rounded-full flex items-center justify-center shadow-[0_0_20px_rgba(16,185,129,0.3)]">
-              <svg className="w-10 h-10 text-white drop-shadow-md" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <svg className="w-8 h-8 text-white drop-shadow-md" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M5 13l4 4L19 7" />
               </svg>
             </div>
           </div>
 
           {/* Headline */}
-          <h1 className="text-3xl md:text-4xl font-extrabold mb-3 tracking-tight">
+          <h1 className="text-2xl md:text-3xl font-extrabold mb-2 tracking-tight">
             <span className="bg-linear-to-r from-emerald-400 to-cyan-400 bg-clip-text text-transparent">
               Vote Confirmed
             </span>
           </h1>
-          <p className="mb-8 text-base" style={{ color: 'var(--v-text-2)' }}>
+          <p className="mb-5 text-sm" style={{ color: 'var(--v-text-2)' }}>
             Your ballot has been encrypted and securely added to the election tally.
           </p>
 
           {/* Security Receipt Block */}
-          <div className="rounded-xl p-5 mb-8 text-left" style={{ backgroundColor: 'var(--v-hover)', border: '1px solid var(--v-border)' }}>
+          <div className="rounded-xl p-4 mb-5 text-left" style={{ backgroundColor: 'var(--v-hover)', border: '1px solid var(--v-border)' }}>
             <div className="flex items-center gap-3 mb-4">
               <span className="w-2 h-2 rounded-full bg-cyan-500 shadow-[0_0_8px_#06b6d4]"></span>
               <h3 className="text-[10px] font-bold text-cyan-500 uppercase tracking-widest">Security Verified</h3>
@@ -57,7 +57,7 @@ export function VoteSuccessPage() {
           </div>
 
           {/* Actions */}
-          <Link to="/results">
+          <Link to="/vote/results">
             <button className="w-full py-3 rounded-xl font-bold text-sm bg-linear-to-r from-blue-600 to-cyan-500 text-white transition-all hover:scale-[1.02] active:scale-[0.98] cursor-pointer shadow-[0_0_15px_rgba(6,182,212,0.25)]">
               View Election Results
             </button>

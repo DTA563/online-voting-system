@@ -15,7 +15,12 @@ export const positionsApi = {
         return response.data.data;
       }
       return [];
-    } catch (error) {
+    } catch (error: any) {
+      // If it's a real error (like 500) and not a 404, throw it immediately
+      if (error.response && error.response.status !== 404) {
+        throw error;
+      }
+
       console.log('Nested route failed, trying query parameter...');
       
       // Fallback to query parameter format
@@ -31,30 +36,37 @@ export const positionsApi = {
           return response.data.data;
         }
         return [];
-      } catch (secondError) {
+      } catch (secondError: any) {
         console.error('Both position endpoints failed:', secondError);
-        return [];
+        
+        // ✨ THE MAGIC FIX ✨
+        // If it is a 404, return an empty array instead of crashing
+        if (secondError.response && secondError.response.status === 404) {
+          return [];
+        }
+        
+        throw secondError; // Throw actual error up to the UI
       }
     }
   },
 
   // Get single position by ID
-  getById: async (positionId: number): Promise<Position | null> => {
+  getById: async (positionId: number): Promise<Position> => {
     try {
       const response = await api.get<ApiResponse<Position>>(`/positions/${positionId}`);
       
       if (response.data && response.data.data) {
         return response.data.data;
       }
-      return null;
+      throw new Error('Unexpected response format from server');
     } catch (error) {
       console.error('Error fetching position:', error);
-      return null;
+      throw error;
     }
   },
 
   // Create new position
-  create: async (electionId: number, title: string): Promise<Position | null> => {
+  create: async (electionId: number, title: string): Promise<Position> => {
     try {
       // Try POST to /positions first
       const response = await api.post<ApiResponse<Position>>('/positions', {
@@ -65,8 +77,13 @@ export const positionsApi = {
       if (response.data && response.data.data) {
         return response.data.data;
       }
-      return null;
-    } catch (error) {
+      throw new Error('Unexpected response format from server');
+    } catch (error: any) {
+      // If it's a validation error (400) or server error (500), throw it immediately
+      if (error.response && error.response.status !== 404) {
+         throw error;
+      }
+
       console.log('POST to /positions failed, trying nested route...');
       
       // Fallback to nested route
@@ -78,16 +95,16 @@ export const positionsApi = {
         if (response.data && response.data.data) {
           return response.data.data;
         }
-        return null;
+        throw new Error('Unexpected response format from server');
       } catch (secondError) {
         console.error('Both position creation endpoints failed:', secondError);
-        return null;
+        throw secondError; // Throw actual error up to the UI
       }
     }
   },
 
   // Update position
-  update: async (positionId: number, title: string): Promise<Position | null> => {
+  update: async (positionId: number, title: string): Promise<Position> => {
     try {
       const response = await api.put<ApiResponse<Position>>(`/positions/${positionId}`, {
         title
@@ -96,10 +113,10 @@ export const positionsApi = {
       if (response.data && response.data.data) {
         return response.data.data;
       }
-      return null;
+      throw new Error('Unexpected response format from server');
     } catch (error) {
       console.error('Error updating position:', error);
-      return null;
+      throw error; // Throw actual error up to the UI
     }
   },
 
@@ -110,7 +127,7 @@ export const positionsApi = {
       return true;
     } catch (error) {
       console.error('Error deleting position:', error);
-      return false;
+      throw error; // Throw actual error up to the UI
     }
   }
 };

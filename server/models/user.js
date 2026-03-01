@@ -9,7 +9,7 @@ class User {
 
     // find all user
     static async findAll(role = null) {
-        let query = 'SELECT user_id, full_name, role, status, created_at, is_verified FROM users';
+        let query = 'SELECT user_id, full_name, role, status, is_verified, last_login, created_at FROM users';
         let params = [];
         
         if (role) {
@@ -37,6 +37,15 @@ class User {
         const [result] = await db.query(
             'UPDATE users SET role = ? WHERE user_id = ?',
             [newRole, userId]
+        );
+        return result;
+    }
+
+    // Update last login timestamp
+    static async updateLastLogin(userId) {
+        const [result] = await db.query(
+            'UPDATE users SET last_login = NOW() WHERE user_id = ?',
+            [userId]
         );
         return result;
     }

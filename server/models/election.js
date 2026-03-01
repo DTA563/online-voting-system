@@ -30,6 +30,24 @@ class Election {
         return result.insertId;
     }
 
+    // ADDED: Update method mapping 'status' to 'is_published'
+    static async update(electionId, data) {
+        const { title, start_date, end_date, status } = data;
+        
+        // Convert frontend string status to database tinyint/boolean
+        // Sets to 1 (true) if 'active' or 'upcoming', else 0 (false)
+        const is_published = (status === 'active' || status === 'upcoming') ? 1 : 0;
+
+        const query = `
+            UPDATE elections 
+            SET title = ?, start_date = ?, end_date = ?, is_published = ? 
+            WHERE election_id = ?
+        `;
+        
+        const [result] = await db.query(query, [title, start_date, end_date, is_published, electionId]);
+        return result;
+    }
+
     // ADDED: Delete method for the manage page
     static async delete(electionId) {
         return await db.query('DELETE FROM elections WHERE election_id = ?', [electionId]);

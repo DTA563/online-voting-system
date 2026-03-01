@@ -53,16 +53,28 @@ export const candidatesApi = {
     }
   },
 
-  // Create new candidate
-  create: async (candidateData: {
+  // Create new candidate with FormData support
+  create: async (candidateData: FormData | {
     position_id: number;
     full_name: string;
     manifesto?: string | null;
     photo_url?: string | null;
   }): Promise<Candidate | null> => {
     try {
-      // Try POST to /candidates first
-      const response = await api.post<ApiResponse<Candidate>>('/candidates', candidateData);
+      let response;
+      
+      // Check if candidateData is FormData
+      if (candidateData instanceof FormData) {
+        // If it's FormData, send directly
+        response = await api.post<ApiResponse<Candidate>>('/candidates', candidateData, {
+          headers: {
+            'Content-Type': 'multipart/form-data',
+          },
+        });
+      } else {
+        // If it's a plain object, send as JSON
+        response = await api.post<ApiResponse<Candidate>>('/candidates', candidateData);
+      }
       
       if (response.data && response.data.data) {
         return response.data.data;
@@ -71,16 +83,44 @@ export const candidatesApi = {
     } catch (error) {
       console.log('POST to /candidates failed, trying nested route...');
       
-      // Fallback to nested route
+      // Fallback to nested route - handle both FormData and JSON
       try {
-        const response = await api.post<ApiResponse<Candidate>>(
-          `/positions/${candidateData.position_id}/candidates`, 
-          {
-            full_name: candidateData.full_name,
-            manifesto: candidateData.manifesto,
-            photo_url: candidateData.photo_url
+        let response;
+        
+        if (candidateData instanceof FormData) {
+          // Extract position_id from FormData for the URL
+          const positionId = candidateData.get('position_id');
+          
+          // Create new FormData without position_id for the nested route
+          const nestedFormData = new FormData();
+          nestedFormData.append('full_name', candidateData.get('full_name') as string);
+          if (candidateData.get('manifesto')) {
+            nestedFormData.append('manifesto', candidateData.get('manifesto') as string);
           }
-        );
+          if (candidateData.get('photo')) {
+            nestedFormData.append('photo', candidateData.get('photo') as File);
+          }
+          if (candidateData.get('photo_url')) {
+            nestedFormData.append('photo_url', candidateData.get('photo_url') as string);
+          }
+          
+          response = await api.post<ApiResponse<Candidate>>(
+            `/positions/${positionId}/candidates`, 
+            nestedFormData,
+            {
+              headers: {
+                'Content-Type': 'multipart/form-data',
+              },
+            }
+          );
+        } else {
+          // For JSON, extract position_id
+          const { position_id, ...restData } = candidateData;
+          response = await api.post<ApiResponse<Candidate>>(
+            `/positions/${position_id}/candidates`, 
+            restData
+          );
+        }
         
         if (response.data && response.data.data) {
           return response.data.data;
@@ -93,14 +133,27 @@ export const candidatesApi = {
     }
   },
 
-  // Update candidate
-  update: async (candidateId: number, candidateData: {
+  // Update candidate with FormData support
+  update: async (candidateId: number, candidateData: FormData | {
     full_name?: string;
     manifesto?: string | null;
     photo_url?: string | null;
   }): Promise<Candidate | null> => {
     try {
-      const response = await api.put<ApiResponse<Candidate>>(`/candidates/${candidateId}`, candidateData);
+      let response;
+      
+      // Check if candidateData is FormData
+      if (candidateData instanceof FormData) {
+        // If it's FormData, send with proper content type
+        response = await api.put<ApiResponse<Candidate>>(`/candidates/${candidateId}`, candidateData, {
+          headers: {
+            'Content-Type': 'multipart/form-data',
+          },
+        });
+      } else {
+        // If it's a plain object, send as JSON
+        response = await api.put<ApiResponse<Candidate>>(`/candidates/${candidateId}`, candidateData);
+      }
       
       if (response.data && response.data.data) {
         return response.data.data;

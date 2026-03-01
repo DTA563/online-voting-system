@@ -1,4 +1,5 @@
 const Position = require('../models/position');
+const AuditLog = require('../models/auditlog'); // ADDED: Import the AuditLog model
 
 /**
  * getPositions
@@ -34,6 +35,7 @@ exports.createPosition = async (req, res) => {
     try {
         const electionId = req.params.electionId || req.body.election_id;
         const { title } = req.body;
+        const actor = req.user; // ADDED: Get the user making the change
 
         if (!electionId || !title) {
             return res.status(400).json({ message: "Election ID and Title are required." });
@@ -41,6 +43,9 @@ exports.createPosition = async (req, res) => {
 
         const positionId = await Position.create(electionId, title);
         const newPosition = await Position.getById(positionId);
+        
+        // ADDED: Log the creation
+        await AuditLog.record(actor.id, `Created position '${title}' for election ID ${electionId}`, req.ip);
         
         res.status(201).json({ status: "success", data: newPosition });
     } catch (err) {
@@ -52,8 +57,14 @@ exports.updatePosition = async (req, res) => {
     try {
         const { id } = req.params;
         const { title } = req.body;
+        const actor = req.user; // ADDED: Get the user making the change
+
         await Position.update(id, title);
         const updated = await Position.getById(id);
+
+        // ADDED: Log the update
+        await AuditLog.record(actor.id, `Updated position ID ${id} to '${title}'`, req.ip);
+
         res.json({ status: "success", data: updated });
     } catch (err) {
         res.status(500).json({ message: "Error updating position." });
@@ -63,7 +74,13 @@ exports.updatePosition = async (req, res) => {
 exports.deletePosition = async (req, res) => {
     try {
         const { id } = req.params;
+        const actor = req.user; // ADDED: Get the user making the change
+
         await Position.delete(id);
+
+        // ADDED: Log the deletion
+        await AuditLog.record(actor.id, `Deleted position ID ${id}`, req.ip);
+
         res.json({ status: "success", message: "Position deleted." });
     } catch (err) {
         res.status(500).json({ message: "Error deleting position." });

@@ -1,4 +1,5 @@
 const Election = require('../models/election');
+const AuditLog = require('../models/auditlog'); // ADDED: Import the AuditLog model
 
 exports.getActiveElection = async (req, res) => {
     try {
@@ -87,13 +88,45 @@ exports.getAllElections = async (req, res) => {
 exports.createElection = async (req, res) => {
     try {
         const { title, start_date, end_date } = req.body;
+        const actor = req.user; // Get the user performing the action
+
         if (!title || !start_date || !end_date) {
             return res.status(400).json({ message: "Missing title or dates." });
         }
+
         const electionId = await Election.create(title, start_date, end_date);
+        
+        // ADDED: Log the creation
+        await AuditLog.record(actor.id, `Created new election: ${title} (ID: ${electionId})`, req.ip);
+
         res.status(201).json({ status: "success", data: { election_id: electionId } });
     } catch (err) {
         res.status(500).json({ message: "Failed to create election." });
+    }
+};
+
+/**
+ * updateElection (ADDED TO FIX 404 ERROR)
+ */
+exports.updateElection = async (req, res) => {
+    try {
+        const { id } = req.params;
+        const { title, start_date, end_date, status } = req.body;
+        const actor = req.user; // Get the user performing the action
+
+        if (!title || !start_date || !end_date) {
+            return res.status(400).json({ message: "Missing title or dates." });
+        }
+
+        await Election.update(id, { title, start_date, end_date, status });
+        
+        // ADDED: Log the update
+        await AuditLog.record(actor.id, `Updated election ID ${id}: ${title}`, req.ip);
+
+        res.json({ status: "success", message: "Election updated successfully." });
+    } catch (err) {
+        console.error("Update Election Error:", err.message);
+        res.status(500).json({ message: "Failed to update election." });
     }
 };
 
@@ -103,8 +136,14 @@ exports.createElection = async (req, res) => {
 exports.deleteElection = async (req, res) => {
     try {
         const { id } = req.params;
+        const actor = req.user; // Get the user performing the action
+
         // Ensure you have this method in your Election model
         await Election.delete(id); 
+        
+        // ADDED: Log the deletion
+        await AuditLog.record(actor.id, `Deleted election ID: ${id}`, req.ip);
+
         res.json({ status: "success", message: "Election deleted." });
     } catch (err) {
         res.status(500).json({ message: "Error deleting election." });

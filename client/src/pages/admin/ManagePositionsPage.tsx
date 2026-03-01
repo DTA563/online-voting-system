@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
-import { LoadingSpinner, LoadingScreen } from '../../components/ui';
+import { LoadingSpinner } from '../../components/ui';
 import { electionsApi, positionsApi } from '../../api';
 import { Election, Position } from '../../types';
 
@@ -12,8 +12,7 @@ const Icons = {
   Trash: () => <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" /></svg>,
   Edit: () => <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" /></svg>,
   Save: () => <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M5 13l4 4L19 7" /></svg>,
-  Filter: () => <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M3 4a1 1 0 011-1h16a1 1 0 011 1v2.586a1 1 0 01-.293.707l-6.414 6.414a1 1 0 00-.293.707V17l-4 4v-6.586a1 1 0 00-.293-.707L3.293 7.293A1 1 0 013 6.586V4z" /></svg>,
-  Refresh: () => <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" /></svg>
+  Filter: () => <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M3 4a1 1 0 011-1h16a1 1 0 011 1v2.586a1 1 0 01-.293.707l-6.414 6.414a1 1 0 00-.293.707V17l-4 4v-6.586a1 1 0 00-.293-.707L3.293 7.293A1 1 0 013 6.586V4z" /></svg>
 };
 
 export function ManagePositionsPage() {
@@ -29,9 +28,13 @@ export function ManagePositionsPage() {
   const [error, setError] = useState('');
   const [debugInfo, setDebugInfo] = useState('');
 
-  // Form
+  // Form & Modals
   const [editingPosition, setEditingPosition] = useState<Position | null>(null);
   const [title, setTitle] = useState('');
+  
+  // Custom Delete Modal State
+  const [deleteModal, setDeleteModal] = useState<{ isOpen: boolean; positionId: number | null }>({ isOpen: false, positionId: null });
+  const [isDeleting, setIsDeleting] = useState(false);
 
   // --- Effects ---
   useEffect(() => {
@@ -116,12 +119,6 @@ export function ManagePositionsPage() {
     window.scrollTo({ top: 100, behavior: 'smooth' });
   };
 
-  const handleRefresh = async () => {
-    if (selectedElectionId) {
-      await loadPositions(selectedElectionId);
-    }
-  };
-
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!selectedElectionId) return;
@@ -165,8 +162,17 @@ export function ManagePositionsPage() {
     }
   };
 
-  const handleDelete = async (id: number) => {
-    if (!confirm('⚠️ Removing this position will delete all associated candidates. Continue?')) return;
+  // Opens the modal
+  const promptDelete = (id: number) => {
+    setDeleteModal({ isOpen: true, positionId: id });
+  };
+
+  // Confirms the actual deletion
+  const confirmDelete = async () => {
+    const id = deleteModal.positionId;
+    if (!id) return;
+    
+    setIsDeleting(true);
     try {
       console.log('Deleting position ID:', id);
       const success = await positionsApi.delete(id);
@@ -188,20 +194,67 @@ export function ManagePositionsPage() {
     } catch (err: any) { 
       console.error('Error deleting position:', err);
       setError(`Failed to delete position: ${err.response?.data?.message || err.message}`); 
+    } finally {
+      setIsDeleting(false);
+      setDeleteModal({ isOpen: false, positionId: null });
     }
   };
 
+  // --- Layout Skeleton Loader ---
   if (isLoading) {
-    return <LoadingScreen />;
+    return (
+      <div className="max-w-7xl mx-auto p-6 lg:p-10 space-y-10 w-full min-h-screen">
+        {/* Header Skeleton */}
+        <div className="flex flex-col md:flex-row justify-between gap-6 pb-6 border-b border-white/5 animate-pulse">
+          <div className="space-y-3">
+            <div className="h-4 w-32 bg-white/5 rounded-md"></div>
+            <div className="h-8 w-64 bg-white/10 rounded-lg"></div>
+            <div className="h-4 w-96 max-w-full bg-white/5 rounded-md"></div>
+          </div>
+          <div className="h-12 w-40 bg-white/10 rounded-xl mt-4 md:mt-0"></div>
+        </div>
+
+        <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 animate-pulse">
+          {/* Left Column Skeleton */}
+          <div className="lg:col-span-4 space-y-6">
+            <div className="h-32 bg-white/5 rounded-2xl border border-white/5"></div>
+            <div className="h-64 bg-white/5 rounded-2xl border border-white/5"></div>
+          </div>
+          {/* Right Column Skeleton */}
+          <div className="lg:col-span-8">
+            <div className="h-[500px] bg-white/5 rounded-3xl border border-white/5 p-6 flex flex-col gap-4">
+               <div className="h-8 w-48 bg-white/10 rounded-lg mb-4"></div>
+               {[1, 2, 3, 4, 5].map(i => (
+                 <div key={i} className="h-20 w-full bg-white/5 rounded-xl"></div>
+               ))}
+            </div>
+          </div>
+        </div>
+      </div>
+    );
   }
 
   return (
     <>
       <style>{`
+        /* Page Load Animations */
         @keyframes slideUp { from { transform: translateY(20px); opacity: 0; } to { transform: translateY(0); opacity: 1; } }
         .animate-enter { animation: slideUp 0.6s cubic-bezier(0.16, 1, 0.3, 1) forwards; }
         .delay-100 { animation-delay: 100ms; }
         .delay-200 { animation-delay: 200ms; }
+
+        /* Modal Entry Animations */
+        @keyframes modalEnter {
+          from { opacity: 0; transform: scale(0.95) translateY(10px); }
+          to { opacity: 1; transform: scale(1) translateY(0); }
+        }
+        .animate-modal { animation: modalEnter 0.4s cubic-bezier(0.16, 1, 0.3, 1) forwards; }
+        
+        @keyframes backdropEnter {
+          from { opacity: 0; }
+          to { opacity: 1; }
+        }
+        .animate-backdrop { animation: backdropEnter 0.3s ease-out forwards; }
       `}</style>
 
       <div className="text-white font-sans selection:bg-blue-500/30 pb-12">
@@ -210,9 +263,6 @@ export function ManagePositionsPage() {
           {/* --- Header --- */}
           <header className={`flex flex-col md:flex-row md:items-end justify-between gap-6 pb-6 border-b border-white/5 opacity-0 ${mounted ? 'animate-enter' : ''}`}>
             <div>
-              <Link to="/admin" className="flex items-center gap-2 text-gray-500 hover:text-white transition-colors text-sm mb-2 group">
-                 <Icons.Back /> <span className="group-hover:translate-x-1 transition-transform">Back to Dashboard</span>
-              </Link>
               <h1 className="text-3xl font-bold tracking-tight text-white bg-clip-text">
                 Manage Positions
               </h1>
@@ -222,15 +272,6 @@ export function ManagePositionsPage() {
             </div>
 
             <div className="flex gap-3">
-              {selectedElectionId && (
-                <button
-                  onClick={handleRefresh}
-                  className="p-3 rounded-xl bg-white/5 hover:bg-white/10 border border-white/10 transition-all hover:border-blue-500/30"
-                  title="Refresh positions"
-                >
-                  <Icons.Refresh />
-                </button>
-              )}
               {!showForm && (
                 <button 
                   onClick={() => setShowForm(true)}
@@ -279,7 +320,7 @@ export function ManagePositionsPage() {
                     <select
                         value={selectedElectionId || ''}
                         onChange={(e) => setSelectedElectionId(Number(e.target.value))}
-                        className="w-full bg-black/40 border border-white/10 rounded-xl px-4 py-3.5 text-white focus:outline-none focus:border-blue-500/50 focus:ring-1 focus:ring-blue-500/50 appearance-none cursor-pointer transition-all hover:bg-white/5"
+                        className="w-full bg-black/40 border border-white/10 rounded-xl pl-4 pr-10 py-3.5 text-white focus:outline-none focus:border-blue-500/50 focus:ring-1 focus:ring-blue-500/50 appearance-none cursor-pointer transition-all hover:bg-white/5"
                     >
                         <option value="" disabled className="bg-gray-900">Select an Election...</option>
                         {elections.map((election) => (
@@ -375,13 +416,7 @@ export function ManagePositionsPage() {
                               <Icons.Hierarchy />
                            </div>
                            <p className="font-medium text-white text-lg mb-2">No positions found</p>
-                           <p className="text-sm text-gray-500 mb-6">Start by adding roles for this election.</p>
-                           <button 
-                             onClick={() => setShowForm(true)} 
-                             className="px-6 py-3 bg-blue-600 hover:bg-blue-500 text-white rounded-xl font-bold transition-all flex items-center gap-2"
-                           >
-                             <Icons.Plus /> Create First Position
-                           </button>
+                           <p className="text-sm text-gray-500 mb-6">Use the form to add roles for this election.</p>
                         </div>
                     ) : (
                         <div className="space-y-2 max-h-[600px] overflow-y-auto pr-2">
@@ -411,7 +446,7 @@ export function ManagePositionsPage() {
                                       <Icons.Edit />
                                     </button>
                                     <button 
-                                      onClick={() => handleDelete(position.position_id)}
+                                      onClick={() => promptDelete(position.position_id)}
                                       className="p-2.5 rounded-lg bg-white/5 hover:bg-red-500/20 text-gray-400 hover:text-red-400 transition-colors"
                                       title="Delete"
                                     >
@@ -429,6 +464,41 @@ export function ManagePositionsPage() {
           </div>
         </div>
       </div>
+
+      {/* --- Delete Confirmation Modal --- */}
+      {deleteModal.isOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm animate-backdrop">
+          <div className="bg-[#111] border border-white/10 rounded-2xl p-6 w-full max-w-md shadow-2xl animate-modal">
+            <div className="flex items-center gap-4 mb-4">
+              <div className="p-3 bg-red-500/10 rounded-full text-red-500">
+                <Icons.Trash />
+              </div>
+              <h3 className="text-xl font-bold text-white">Delete Position</h3>
+            </div>
+            
+            <p className="text-gray-400 mb-6">
+              Are you sure you want to delete this position? <strong className="text-white block mt-2">All associated candidates will also be permanently removed.</strong>
+            </p>
+            
+            <div className="flex gap-3 justify-end">
+              <button
+                onClick={() => setDeleteModal({ isOpen: false, positionId: null })}
+                disabled={isDeleting}
+                className="px-5 py-2.5 rounded-xl border border-white/10 text-gray-400 hover:text-white hover:bg-white/5 transition-colors font-medium disabled:opacity-50"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={confirmDelete}
+                disabled={isDeleting}
+                className="px-5 py-2.5 rounded-xl bg-red-600 hover:bg-red-500 text-white font-bold transition-colors disabled:opacity-50 flex items-center gap-2"
+              >
+                {isDeleting ? <LoadingSpinner size="sm" /> : 'Yes, Delete Position'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </>
   );
 }

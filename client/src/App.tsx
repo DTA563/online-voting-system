@@ -1,3 +1,5 @@
+import { useEffect } from 'react'; // ADDED: useEffect for the socket connection
+import { io } from 'socket.io-client'; // ADDED: Socket.io client
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
 import { AuthProvider, useAuth } from './context';
 import { MainLayout, ProtectedRoute, SuperAdminLayout, AdminLayout, VoterLayout } from './components';
@@ -21,6 +23,48 @@ import {
 
 function AppRoutes() {
   const { isAuthenticated, isAdmin } = useAuth();
+
+  // ==========================================
+  // 🚨 THE PANIC BUTTON LISTENER
+  // ==========================================
+  useEffect(() => {
+    // Only connect if the user is actually logged in
+    if (isAuthenticated) {
+      const userData = localStorage.getItem('user');
+      
+      if (userData) {
+        try {
+          const user = JSON.parse(userData);
+          
+          // Connect to the backend (Update this URL if your backend is hosted elsewhere!)
+          const socket = io('http://localhost:5001'); 
+
+          // Tell the backend who we are to join our personal room
+          if (user && user.id) {
+             const stringId = String(user.id);
+             console.log("🔌 Joining Socket Room:", stringId);
+             socket.emit('register_user', stringId);
+          }
+
+          // Listen for the kick-out signal from the Super Admin
+          socket.on('force_logout', (data) => {
+            alert(data.message); // Show the reason
+            localStorage.removeItem('token'); // Destroy local session
+            localStorage.removeItem('user');
+            window.location.href = '/login'; // Instantly redirect
+          });
+
+          // Cleanup: Disconnect when the user logs out or leaves
+          return () => {
+            socket.disconnect();
+          };
+        } catch (err) {
+          console.error("Error setting up socket:", err);
+        }
+      }
+    }
+  }, [isAuthenticated]);
+  // ==========================================
 
   return (
     <Routes>

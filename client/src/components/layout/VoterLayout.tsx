@@ -1,9 +1,10 @@
-import { useRef, useLayoutEffect } from 'react';
+import { useRef, useLayoutEffect, useState } from 'react';
 import { Outlet, useLocation } from 'react-router-dom';
 import { VoterSidebar } from './VoterSidebar';
 import { ThemeProvider, useTheme } from '../../context';
 
 function VoterLayoutInner() {
+  const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const { isDark } = useTheme();
   const scrollRef = useRef<HTMLDivElement>(null);
   const { pathname } = useLocation();
@@ -43,12 +44,37 @@ function VoterLayoutInner() {
       >
         {/* Sidebar */}
         <div className="relative z-20 shrink-0">
-          <VoterSidebar />
+          <VoterSidebar isOpen={isMobileMenuOpen} onClose={() => setIsMobileMenuOpen(false)} />
         </div>
 
-        {/* Scrollable Content Area */}
-        <div ref={scrollRef} className="relative z-10 flex-1 overflow-y-auto no-scrollbar">
-          <Outlet />
+        {/* Main Content Wrapper */}
+        <div className="flex-1 flex flex-col min-w-0 relative z-10 w-full">
+            
+            {/* Mobile Header */}
+            <div className="md:hidden flex items-center justify-between p-4 sticky top-0 z-30 transition-colors duration-300"
+                 style={{
+                   backgroundColor: 'var(--v-bg)',
+                   borderBottom: '1px solid var(--v-border)'
+                 }}>
+                <div className="flex items-center gap-3">
+                   <img src="/ballot-logo.png" alt="SmartBallot" className="w-8 h-8 rounded-lg object-contain" />
+                   <span className="font-bold text-lg" style={{ color: 'var(--v-text)' }}>SmartBallot</span>
+                </div>
+                <button 
+                  onClick={() => setIsMobileMenuOpen(true)}
+                  className="p-2 -mr-2 rounded-lg transition-colors"
+                  style={{ color: 'var(--v-text-2)' }}
+                >
+                  <svg className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M4 6h16M4 12h16M4 18h16" />
+                  </svg>
+                </button>
+            </div>
+
+            {/* Scrollable Content Area */}
+            <div ref={scrollRef} className="flex-1 overflow-y-auto no-scrollbar">
+              <Outlet />
+            </div>
         </div>
       </div>
     </>

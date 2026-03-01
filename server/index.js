@@ -1,9 +1,22 @@
 const express = require('express');
 const cors = require('cors');
+const path = require('path');
+const fs = require('fs');
 require('dotenv').config();
+
+// ADDED: Built-in Node module and Socket.io
+const http = require('http'); 
+const { Server } = require('socket.io'); 
 
 // Initialize database connection
 const db = require('./config/db');
+
+// Create uploads directory if it doesn't exist
+const uploadsDir = path.join(__dirname, 'uploads');
+if (!fs.existsSync(uploadsDir)) {
+  fs.mkdirSync(uploadsDir, { recursive: true });
+  console.log('📁 Uploads directory created');
+}
 
 // Route Imports
 const authRoutes = require('./routes/authRoutes');
@@ -18,6 +31,41 @@ const candidateRoutes = require('./routes/candidateRoutes');
 
 const app = express();
 const PORT = process.env.PORT || 5000;
+
+// ==========================================
+// 🔌 SOCKET.IO SETUP
+// ==========================================
+// Create the HTTP server and attach Socket.io
+const server = http.createServer(app);
+const io = new Server(server, {
+    cors: {
+        origin: "*", // Update this to your React app's URL in production
+        methods: ["GET", "POST", "PUT", "DELETE"]
+    }
+});
+
+// Make 'io' accessible inside your controllers (like superAdminController)
+app.set('io', io);
+
+// Listen for connections
+io.on('connection', (socket) => {
+    console.log('🔌 A user connected:', socket.id);
+
+    // When the React frontend tells us who logged in, put them in a personal room
+    socket.on('register_user', (userId) => {
+        // FIX: Force the ID to be a string to avoid the Data Type Trap!
+        const stringId = String(userId);
+        socket.join(stringId);
+        console.log(`👤 User ${stringId} joined their personal room.`);
+    });
+
+    socket.on('disconnect', () => {
+        console.log('🔴 User disconnected:', socket.id);
+    });
+});
+// ==========================================
+
+
 app.set('trust proxy', true);
 app.use((req, res, next) => {
     let ip = req.ip;
@@ -29,11 +77,15 @@ app.use((req, res, next) => {
     next();
 });
 
-//  GLOBAL MIDDLEWARE 
+// GLOBAL MIDDLEWARE 
 app.use(cors());
-app.use(express.json()); // Parses incoming JSON requests
+app.use(express.json({ limit: '50mb' })); // Parses incoming JSON requests
+app.use(express.urlencoded({ extended: true, limit: '50mb' }));
 
-//  ROUTE MOUNTING 
+// Serve static files from uploads directory
+app.use('/uploads', express.static(path.join(__dirname, 'uploads')));
+
+// ROUTE MOUNTING 
 // All authentication logic (Login/Register)
 app.use('/api/auth', authRoutes);
 
@@ -61,7 +113,7 @@ app.use('/api/positions', positionRoutes);
 // Candidate Route
 app.use('/api/candidates', candidateRoutes);
 
-//  HEALTH CHECK 
+// HEALTH CHECK 
 app.get('/', (req, res) => {
     res.json({ 
         status: "success", 
@@ -70,7 +122,7 @@ app.get('/', (req, res) => {
     });
 });
 
-//  GLOBAL ERROR HANDLER 
+// GLOBAL ERROR HANDLER 
 // Catches any unhandled errors in the request cycle
 app.use((err, req, res, next) => {
     console.error('Server Error:', err.stack);
@@ -80,15 +132,17 @@ app.use((err, req, res, next) => {
     });
 });
 
-//  404 HANDLER 
+// 404 HANDLER 
 app.use((req, res) => {
     res.status(404).json({ message: "API Route not found." });
 });
 
-//  SERVER INITIALIZATION 
-app.listen(PORT, () => {
+// SERVER INITIALIZATION 
+// CHANGED: Using server.listen instead of app.listen to include Socket.io
+server.listen(PORT, () => {
     console.log(`
-     SERVER RUNNING ON PORT: ${PORT}
-     ENVIRONMENT: ${process.env.NODE_ENV || 'development'}
+     🚀 SERVER RUNNING ON PORT: ${PORT}
+     🌍 ENVIRONMENT: ${process.env.NODE_ENV || 'development'}
+     📁 UPLOADS DIRECTORY: ${uploadsDir}
     `);
 });

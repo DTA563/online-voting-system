@@ -46,6 +46,19 @@ exports.manageUserRole = async (req, res) => {
         const actionMessage = `Modified user ${targetUserId}: Role -> ${newRole || 'unchanged'}, Status -> ${newStatus || 'unchanged'}`;
         await AuditLog.record(actor.id, actionMessage, req.ip);
 
+        // ==========================================
+        // 🚨 THE PANIC BUTTON (SOCKET.IO)
+        // ==========================================
+        const io = req.app.get('io'); // Grab the socket server we set in index.js
+        if (io) {
+            const stringTarget = String(targetUserId);
+            console.log(`🚨 Firing force_logout at room: ${stringTarget}`);
+            io.to(stringTarget).emit('force_logout', { 
+                message: "Your account privileges or status have been updated by an administrator. Please log in again." 
+            });
+        }
+        // ==========================================
+
         res.json({ status: "success", message: "User account updated and action logged." });
     } catch (err) {
         res.status(500).json({ message: "Error in management logic.", error: err.message });
@@ -76,6 +89,19 @@ exports.resetUserPassword = async (req, res) => {
         await db.query('UPDATE users SET password_hash = ? WHERE user_id = ?', [hashedPassword, targetUserId]);
 
         await AuditLog.record(actor.id, `Reset password for user: ${targetUserId}`, req.ip);
+
+        // ==========================================
+        // 🚨 THE PANIC BUTTON (SOCKET.IO)
+        // ==========================================
+        const io = req.app.get('io');
+        if (io) {
+            const stringTarget = String(targetUserId);
+            console.log(`🚨 Firing force_logout at room: ${stringTarget}`);
+            io.to(stringTarget).emit('force_logout', { 
+                message: "Your password was just reset by an administrator. Please log in with your new temporary password." 
+            });
+        }
+        // ==========================================
 
         res.json({ status: "success", message: `Password reset to default: ${tempPassword}` });
 

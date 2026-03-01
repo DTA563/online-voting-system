@@ -1,4 +1,5 @@
 const User = require('../models/user');
+const AuditLog = require('../models/auditlog'); // ADDED: Import the AuditLog model
 const bcrypt = require('bcryptjs');
 const jwt = require('jsonwebtoken');
 
@@ -28,7 +29,12 @@ exports.register = async (req, res) => {
         const hashedPassword = await bcrypt.hash(password, salt);
 
         // 4. Save to Database
-        await User.create(finalId, finalName, hashedPassword, role || 'voter');
+        const assignedRole = role || 'voter';
+        await User.create(finalId, finalName, hashedPassword, assignedRole);
+
+        // ADDED: Log the registration
+        // Note: Since they aren't logged in yet, we use the ID they just created
+        await AuditLog.record(finalId, `Registered new account as ${assignedRole}`, req.ip);
 
         console.log("✅ User Registered Successfully:", finalId);
         res.status(201).json({ status: "success", message: "User registered successfully!" });
@@ -75,6 +81,12 @@ exports.login = async (req, res) => {
             { expiresIn: '2h' }
         );
 
+        // ADDED: Log the successful login
+        await AuditLog.record(user.user_id, `User logged in`, req.ip);
+
+        // ADDED: Update last_login timestamp
+        await User.updateLastLogin(user.user_id);
+
         res.json({
             status: "success",
             token,
@@ -84,5 +96,28 @@ exports.login = async (req, res) => {
     } catch (err) {
         console.error("❌ LOGIN ERROR:", err.message);
         res.status(500).json({ message: "Server error during login." });
+    }
+};
+
+/**
+ * --- LOGOUT CONTROLLER ---
+ */
+exports.logout = async (req, res) => {
+    try {
+        // req.user exists because this route should be protected by your auth middleware
+        const actor = req.user; 
+
+        if (actor) {
+            // Log the successful logout
+            await AuditLog.record(actor.id, `User logged out`, req.ip);
+        }
+
+        // We don't need to destroy a session on the backend since it's JWT. 
+        // We just tell the frontend "Success, now delete your token."
+        res.json({ status: "success", message: "Logged out successfully." });
+
+    } catch (err) {
+        console.error("❌ LOGOUT ERROR:", err.message);
+        res.status(500).json({ message: "Server error during logout." });
     }
 };

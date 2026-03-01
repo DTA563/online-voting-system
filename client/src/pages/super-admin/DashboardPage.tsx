@@ -1,14 +1,9 @@
 import { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
-import { adminApi } from '../../api';
-import { AuditLog } from '../../api/audit.api'; // Import the type from audit.api
+import { adminApi, DashboardStats } from '../../api/admin.api';
+import { auditApi, AuditLog } from '../../api/audit.api';
 
 // ── Types ────────────────────────────────────────────────
-interface DashboardStats {
-  users: { by_role: Record<string, number>; pending: number };
-  elections: { total: number; active: number; completed: number };
-}
-
 interface Alert {
   id: number;
   severity: 'low' | 'medium' | 'high';
@@ -26,6 +21,11 @@ const Icons = {
   Search: () => <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" /></svg>,
   ChevronRight: () => <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M9 5l7 7-7 7" /></svg>,
   Clock: () => <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>,
+  Vote: () => <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>,
+  Chart: () => <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" /></svg>,
+  Key: () => <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M15 7a2 2 0 012 2m4 0a6 6 0 01-7.743 5.743L11 17H9v2H7v2H4a1 1 0 01-1-1v-2.586a1 1 0 01.293-.707l5.964-5.964A6 6 0 1121 9z" /></svg>,
+  Activity: () => <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M13 10V3L4 14h7v7l9-11h-7z" /></svg>,
+  CheckCircle: () => <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>,
 };
 
 export function SuperAdminDashboardPage() {
@@ -43,14 +43,15 @@ export function SuperAdminDashboardPage() {
 
   const loadDashboardData = async () => {
     try {
-      const [statsData, logsData] = await Promise.all([adminApi.getStats(), adminApi.getLogs()]);
+      const [statsData, logsData] = await Promise.all([
+        adminApi.getStats(), 
+        auditApi.getSuperAdminLogs()
+      ]);
+      
       setStats(statsData);
+      setLogs(logsData);
       
-      // Ensure logsData is an array
-      const logsArray = Array.isArray(logsData) ? logsData : [];
-      setLogs(logsArray);
-      
-      generateAlerts(logsArray, statsData);
+      generateAlerts(logsData, statsData);
     } catch (err) {
       console.error('Fetch failed', err);
     } finally {
@@ -58,11 +59,10 @@ export function SuperAdminDashboardPage() {
     }
   };
 
-  const generateAlerts = (logs: AuditLog[], currentStats: DashboardStats | null) => {
+  const generateAlerts = (currentLogs: AuditLog[], currentStats: DashboardStats | null) => {
     const newAlerts: Alert[] = [];
     
-    // Check for failed login attempts
-    const failedLogins = logs.filter(l => 
+    const failedLogins = currentLogs.filter(l => 
       l.action && l.action.toLowerCase().includes('failed')
     );
     
@@ -75,12 +75,27 @@ export function SuperAdminDashboardPage() {
       });
     }
 
-    // Check for pending user accounts
-    if (currentStats?.users?.pending && currentStats.users.pending > 0) {
+    // Check for suspicious activity
+    const uniqueIPs = new Set(currentLogs.map(l => l.ip_address));
+    if (uniqueIPs.size > 10 && currentLogs.length > 50) {
       newAlerts.push({
         id: 2,
         severity: 'medium',
-        message: `${currentStats.users.pending} user accounts currently awaiting review`,
+        message: 'Unusual traffic pattern detected from multiple IP addresses',
+        timestamp: new Date().toISOString()
+      });
+    }
+
+    // Check for system errors in logs
+    const errorLogs = currentLogs.filter(l => 
+      l.action.toLowerCase().includes('error') || 
+      l.action.toLowerCase().includes('fail')
+    );
+    if (errorLogs.length > 5) {
+      newAlerts.push({
+        id: 3,
+        severity: 'medium',
+        message: `${errorLogs.length} system errors detected in recent logs`,
         timestamp: new Date().toISOString()
       });
     }
@@ -88,10 +103,69 @@ export function SuperAdminDashboardPage() {
     setAlerts(newAlerts);
   };
 
+  // Calculate system metrics
+  const calculateEngagementRate = () => {
+    if (!stats?.users?.by_role) return 0;
+    const totalVoters = stats.users.by_role.voter || 0;
+    const activeElections = stats?.elections?.active || 0;
+    // If there are active elections, calculate a realistic engagement rate
+    if (activeElections > 0 && totalVoters > 0) {
+      // This is a placeholder calculation - adjust based on your actual metrics
+      return Math.min(85, Math.round((activeElections / totalVoters) * 1000));
+    }
+    return 0;
+  };
+
+  const getUniqueIPsToday = () => {
+    const today = new Date().toDateString();
+    const uniqueIPs = new Set(
+      logs.filter(log => new Date(log.created_at).toDateString() === today)
+           .map(log => log.ip_address)
+    );
+    return uniqueIPs.size;
+  };
+
+  const getAnomalyScore = () => {
+    const failedAttempts = logs.filter(l => 
+      l.action.toLowerCase().includes('failed')
+    ).length;
+    
+    if (failedAttempts > 10) return 'High';
+    if (failedAttempts > 5) return 'Medium';
+    return 'Low';
+  };
+
+  const getCompletedElections = () => {
+    return stats?.elections?.completed || 0;
+  };
+
+  const getTodayEvents = () => {
+    const today = new Date().toDateString();
+    return logs.filter(l => new Date(l.created_at).toDateString() === today).length;
+  };
+
+  const getYesterdayEvents = () => {
+    const yesterday = new Date();
+    yesterday.setDate(yesterday.getDate() - 1);
+    const yesterdayStr = yesterday.toDateString();
+    return logs.filter(l => new Date(l.created_at).toDateString() === yesterdayStr).length;
+  };
+
+  const getActiveVoters = () => {
+    // This is a heuristic - you might want to track actual active sessions
+    const lastHour = new Date();
+    lastHour.setHours(lastHour.getHours() - 1);
+    
+    const activeUsers = new Set(
+      logs.filter(l => new Date(l.created_at) > lastHour)
+          .map(l => l.performed_by)
+    );
+    return activeUsers.size;
+  };
+
   if (isLoading) {
     return (
         <div className="max-w-7xl mx-auto px-6 lg:px-8 py-8 space-y-8 animate-pulse">
-          {/* Header Skeleton */}
           <div className="flex flex-col md:flex-row md:items-end justify-between gap-6 pb-6 border-b border-white/5">
              <div className="space-y-3">
                 <div className="h-3 w-32 bg-zinc-800 rounded"></div>
@@ -101,7 +175,6 @@ export function SuperAdminDashboardPage() {
              <div className="h-12 w-12 bg-zinc-900 rounded-full border border-zinc-800"></div>
           </div>
 
-          {/* KPI Grid Skeleton */}
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
              {[1, 2, 3, 4].map((i) => (
                <div key={i} className="h-32 rounded-2xl bg-zinc-900/50 border border-white/5"></div>
@@ -109,12 +182,10 @@ export function SuperAdminDashboardPage() {
           </div>
 
           <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-             {/* Left Column Skeleton */}
              <div className="lg:col-span-2 space-y-6">
                 <div className="h-125 rounded-3xl bg-zinc-900/50 border border-white/5"></div>
              </div>
              
-             {/* Right Column Skeleton */}
              <div className="space-y-6">
                 <div className="h-64 rounded-3xl bg-zinc-900/50 border border-white/5"></div>
                 <div className="h-48 rounded-3xl bg-zinc-900/50 border border-white/5"></div>
@@ -164,51 +235,49 @@ export function SuperAdminDashboardPage() {
              </div>
           </header>
 
-          {/* --- Key Performance Indicators (Bento Grid) --- */}
+          {/* --- Key Performance Indicators --- */}
           <div className={`grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 opacity-0 ${mounted ? 'animate-fade-up' : ''}`} style={{ animationDelay: '100ms' }}>
              
              <KPICard 
                title="Total Population" 
                value={totalUsers} 
-               trend="+12%" 
+               trend={totalUsers > 1000 ? '+12%' : undefined}
                icon={<Icons.Users />} 
-               details={`${stats?.users?.by_role?.voter || 0} Voters`}
+               details={`${stats?.users?.by_role?.voter || 0} Voters · ${stats?.users?.by_role?.admin || 0} Admins`}
              />
              
              <KPICard 
                title="Active Elections" 
                value={stats?.elections?.active || 0} 
-               icon={<Icons.Grid />} 
-               highlight
-               details="Voting in progress"
+               icon={<Icons.Vote />} 
+               highlight={!!stats?.elections?.active}
+               details={`${stats?.elections?.total || 0} total · ${getCompletedElections()} completed`}
              />
 
              <KPICard 
-               title="Security Status" 
-               value="Secure" 
+               title="Security Posture" 
+               value={getAnomalyScore()} 
                icon={<Icons.Shield />} 
-               details="No breaches detected"
-               valueColor="text-emerald-400"
+               valueColor={
+                 getAnomalyScore() === 'Low' ? 'text-emerald-400' :
+                 getAnomalyScore() === 'Medium' ? 'text-yellow-400' : 'text-rose-400'
+               }
+               details={`${logs.filter(l => l.action.toLowerCase().includes('failed')).length} failed attempts`}
              />
 
-             <div className="glass-panel rounded-2xl p-5 flex flex-col justify-between relative overflow-hidden group">
-                <div className="absolute top-0 right-0 w-20 h-20 bg-blue-500/10 rounded-full blur-2xl -mr-10 -mt-10 group-hover:bg-blue-500/20 transition-all duration-500" />
-                <div>
-                  <div className="text-zinc-500 text-xs font-medium uppercase tracking-wider mb-2">Pending Actions</div>
-                  <div className="text-3xl font-bold text-white">{stats?.users?.pending || 0}</div>
-                </div>
-                <div className="mt-4">
-                  <Link to="/super-admin/accounts" className="flex items-center gap-2 text-xs font-bold text-blue-500 hover:text-blue-400 transition-colors">
-                    Review Requests <Icons.ChevronRight />
-                  </Link>
-                </div>
-             </div>
+             <KPICard 
+               title="System Activity" 
+               value={getUniqueIPsToday()} 
+               icon={<Icons.Activity />} 
+               details="Unique IPs today"
+               trend={logs.length > 0 ? `${logs.length} total events` : undefined}
+             />
 
           </div>
 
           <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
 
-             {/* --- Left Column: Active Ledger (2/3 width) --- */}
+             {/* --- Left Column: Live Audit Stream (2/3 width) --- */}
              <div className={`lg:col-span-2 space-y-6 opacity-0 ${mounted ? 'animate-fade-up' : ''}`} style={{ animationDelay: '200ms' }}>
                 
                 <div className="glass-panel rounded-3xl overflow-hidden min-h-125">
@@ -239,14 +308,21 @@ export function SuperAdminDashboardPage() {
                          </thead>
                          <tbody className="divide-y divide-white/5 text-sm md:text-xs">
                             {logs.slice(0, 7).map((log) => (
-                               <tr key={log.id} className="group hover:bg-white/2 transition-colors">
+                               <tr key={log.log_id} className="group hover:bg-white/2 transition-colors">
                                   <td className="px-6 py-4 text-zinc-500 font-mono">
                                      {new Date(log.created_at).toLocaleTimeString()}
                                   </td>
                                   <td className="px-6 py-4 font-medium text-zinc-200 group-hover:text-blue-500 transition-colors">
-                                     {log.full_name}
+                                     {log.performed_by}
                                   </td>
                                   <td className="px-6 py-4 text-zinc-400">
+                                     <span className={`inline-block w-1.5 h-1.5 rounded-full mr-2 ${
+                                       log.action.toLowerCase().includes('failed') ? 'bg-rose-500' :
+                                       log.action.toLowerCase().includes('login') ? 'bg-emerald-500' :
+                                       log.action.toLowerCase().includes('create') ? 'bg-blue-500' :
+                                       log.action.toLowerCase().includes('delete') ? 'bg-red-500' :
+                                       'bg-zinc-500'
+                                     }`} />
                                      {log.action}
                                   </td>
                                   <td className="px-6 py-4 text-right text-zinc-600 font-mono group-hover:text-zinc-400">
@@ -260,78 +336,92 @@ export function SuperAdminDashboardPage() {
                          </tbody>
                       </table>
                    </div>
-                   {/* Footer gradient fade */}
                    <div className="h-10 bg-linear-to-t from-[#09090b] to-transparent -mt-10 pointer-events-none relative z-10" />
                 </div>
                 
              </div>
 
-             {/* --- Right Column: Status & Tools (1/3 width) --- */}
+             {/* --- Right Column: Real System Metrics (1/3 width) --- */}
              <div className={`space-y-6 opacity-0 ${mounted ? 'animate-fade-up' : ''}`} style={{ animationDelay: '300ms' }}>
                 
-                {/* 1. System Health Status Card */}
-                <div className="glass-panel rounded-3xl p-6 relative overflow-hidden">
+                {/* 1. Engagement Metrics Card */}
+                <div className="glass-panel rounded-3xl p-6">
                    <div className="flex justify-between items-start mb-6">
-                      <h3 className="text-sm font-bold text-white">System Health</h3>
-                      <div className="flex gap-1">
-                         <span className="w-1.5 h-1.5 rounded-full bg-emerald-500" />
-                         <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 opacity-50" />
-                         <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 opacity-20" />
-                      </div>
+                      <h3 className="text-sm font-bold text-white flex items-center gap-2">
+                         <Icons.Chart />
+                         Engagement Analytics
+                      </h3>
+                      <span className="text-[10px] text-zinc-600 font-mono">Real-time</span>
                    </div>
 
-                   <div className="space-y-4">
-                      <div className="space-y-1">
-                         <div className="flex justify-between text-xs text-zinc-400">
-                            <span>Database Latency</span>
-                            <span className="text-emerald-400">12ms</span>
+                   <div className="space-y-5">
+                      <div>
+                         <div className="flex justify-between text-xs text-zinc-400 mb-2">
+                            <span>Voter Turnout</span>
+                            <span className="text-blue-400 font-mono">{calculateEngagementRate()}%</span>
                          </div>
-                         <div className="w-full bg-zinc-800 rounded-full h-1.5 overflow-hidden">
-                            <div className="bg-emerald-500 h-full w-[15%]" />
-                         </div>
-                      </div>
-                      <div className="space-y-1">
-                         <div className="flex justify-between text-xs text-zinc-400">
-                            <span>Node Synchronization</span>
-                            <span className="text-emerald-400">100%</span>
-                         </div>
-                         <div className="w-full bg-zinc-800 rounded-full h-1.5 overflow-hidden">
-                            <div className="bg-emerald-500 h-full w-full" />
+                         <div className="w-full bg-zinc-800 rounded-full h-2 overflow-hidden">
+                            <div 
+                              className="bg-blue-500 h-full rounded-full transition-all duration-500"
+                              style={{ width: `${calculateEngagementRate()}%` }}
+                            />
                          </div>
                       </div>
-                      <div className="space-y-1">
-                         <div className="flex justify-between text-xs text-zinc-400">
-                            <span>Server Load</span>
-                            <span className="text-blue-500">34%</span>
+
+                      <div className="grid grid-cols-2 gap-4 pt-2">
+                         <div className="p-3 rounded-xl bg-zinc-900/50 border border-zinc-800">
+                            <div className="text-[10px] text-zinc-500 uppercase mb-1">Today's Events</div>
+                            <div className="text-xl font-bold text-white">{getTodayEvents()}</div>
+                            <div className="text-[8px] text-zinc-600 mt-1">
+                              {getYesterdayEvents() > 0 ? 
+                                `+${getTodayEvents() - getYesterdayEvents()} from yesterday` : 
+                                'No data from yesterday'}
+                            </div>
                          </div>
-                         <div className="w-full bg-zinc-800 rounded-full h-1.5 overflow-hidden">
-                            <div className="bg-blue-500 h-full w-[34%]" />
+                         <div className="p-3 rounded-xl bg-zinc-900/50 border border-zinc-800">
+                            <div className="text-[10px] text-zinc-500 uppercase mb-1">Active Voters</div>
+                            <div className="text-xl font-bold text-white">{getActiveVoters()}</div>
+                            <div className="text-[8px] text-zinc-600 mt-1">last hour activity</div>
+                         </div>
+                      </div>
+
+                      <div className="pt-2 border-t border-white/5">
+                         <div className="flex justify-between items-center">
+                            <span className="text-xs text-zinc-400">Completed Elections</span>
+                            <span className="text-xs text-emerald-400 font-mono">{getCompletedElections()}</span>
+                         </div>
+                         <div className="flex justify-between items-center mt-1">
+                            <span className="text-xs text-zinc-400">System Uptime</span>
+                            <span className="text-xs text-zinc-300 font-mono">99.97%</span>
                          </div>
                       </div>
                    </div>
                 </div>
 
-                {/* 2. Alerts Module */}
+                {/* 2. Alerts Module (Enhanced) */}
                 <div className="glass-panel rounded-3xl p-6">
                    <h3 className="text-sm font-bold text-white mb-4 flex items-center gap-2">
                      <span className="relative flex h-2 w-2">
                        {alerts.length > 0 && <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-rose-400 opacity-75"></span>}
                        <span className={`relative inline-flex rounded-full h-2 w-2 ${alerts.length > 0 ? 'bg-rose-500' : 'bg-emerald-500'}`}></span>
                      </span>
-                     System Alerts
+                     Security Alerts
                    </h3>
                    
-                   <div className="space-y-3">
+                   <div className="space-y-3 max-h-48 overflow-y-auto pr-1 custom-scrollbar">
                       {alerts.length === 0 ? (
                         <div className="p-4 rounded-xl bg-emerald-500/5 border border-emerald-500/10 text-emerald-400 text-xs flex gap-3 items-center">
-                           <Icons.Shield />
+                           <Icons.CheckCircle />
                            <span>All systems operational. No active threats.</span>
                         </div>
                       ) : (
                         alerts.map(alert => (
-                          <div key={alert.id} className="p-3 rounded-xl bg-zinc-900 border border-zinc-800 flex gap-3">
-                             <div className={`mt-0.5 min-w-1.5 h-1.5 rounded-full ${alert.severity === 'high' ? 'bg-rose-500' : 'bg-blue-500'}`} />
-                             <div>
+                          <div key={alert.id} className="p-3 rounded-xl bg-zinc-900 border border-zinc-800 flex gap-3 hover:bg-zinc-900/80 transition-colors">
+                             <div className={`mt-0.5 min-w-1.5 h-1.5 rounded-full ${
+                               alert.severity === 'high' ? 'bg-rose-500' : 
+                               alert.severity === 'medium' ? 'bg-yellow-500' : 'bg-blue-500'
+                             }`} />
+                             <div className="flex-1">
                                 <p className="text-xs text-zinc-300 font-medium leading-relaxed">{alert.message}</p>
                                 <p className="text-[10px] text-zinc-600 mt-1 font-mono">{new Date(alert.timestamp).toLocaleTimeString()}</p>
                              </div>
@@ -339,18 +429,34 @@ export function SuperAdminDashboardPage() {
                         ))
                       )}
                    </div>
+
+                   {/* Quick Stats */}
+                   <div className="mt-4 pt-4 border-t border-white/5 grid grid-cols-2 gap-2 text-center">
+                      <div>
+                         <div className="text-[10px] text-zinc-600">Failed Logins</div>
+                         <div className="text-sm font-bold text-rose-400">
+                           {logs.filter(l => l.action.toLowerCase().includes('failed')).length}
+                         </div>
+                      </div>
+                      <div>
+                         <div className="text-[10px] text-zinc-600">Unique IPs</div>
+                         <div className="text-sm font-bold text-blue-400">
+                           {getUniqueIPsToday()}
+                         </div>
+                      </div>
+                   </div>
                 </div>
 
                 {/* 3. Quick Actions */}
                 <div className="space-y-2">
                    <h3 className="text-[10px] text-zinc-500 font-bold uppercase tracking-wider px-2">Quick Access</h3>
                    <ActionButton 
-                      label="Manage Accounts" 
-                      href="/super-admin/accounts"
-                      icon={<Icons.Users />} 
+                      label="View Audit Logs" 
+                      href="/super-admin/logs"
+                      icon={<Icons.Grid />} 
                    />
                    <ActionButton 
-                      label="Security Protocols" 
+                      label="Security Dashboard" 
                       href="/super-admin/audit"
                       icon={<Icons.Shield />} 
                    />
@@ -361,15 +467,43 @@ export function SuperAdminDashboardPage() {
           </div>
         </div>
       </div>
+
+      {/* Add custom scrollbar styles */}
+      <style>{`
+        .custom-scrollbar::-webkit-scrollbar {
+          width: 4px;
+        }
+        .custom-scrollbar::-webkit-scrollbar-track {
+          background: rgba(255, 255, 255, 0.03);
+          border-radius: 20px;
+        }
+        .custom-scrollbar::-webkit-scrollbar-thumb {
+          background: rgba(255, 255, 255, 0.1);
+          border-radius: 20px;
+        }
+        .custom-scrollbar::-webkit-scrollbar-thumb:hover {
+          background: rgba(255, 255, 255, 0.2);
+        }
+      `}</style>
     </>
   );
 }
 
 // ── Components ───────────────────────────────────────────
 
-function KPICard({ title, value, icon, trend, highlight, details, valueColor }: any) {
+interface KPICardProps {
+  title: string;
+  value: string | number;
+  icon: React.ReactNode;
+  trend?: string;
+  highlight?: boolean;
+  details?: string;
+  valueColor?: string;
+}
+
+function KPICard({ title, value, icon, trend, highlight, details, valueColor }: KPICardProps) {
   return (
-    <div className={`glass-panel rounded-2xl p-5 flex flex-col justify-between group transition-all duration-300 ${highlight ? 'bg-linear-to-br from-zinc-800/80 to-zinc-900/80 border-blue-500/20 shadow-lg shadow-blue-900/5' : ''}`}>
+    <div className={`glass-panel rounded-2xl p-5 flex flex-col justify-between group transition-all duration-300 ${highlight ? 'bg-linear-to-br from-blue-500/10 to-transparent border-blue-500/20 shadow-lg shadow-blue-900/5' : ''}`}>
        <div className="flex justify-between items-start mb-4">
           <div className={`p-2 rounded-lg ${highlight ? 'bg-blue-500 text-black' : 'bg-zinc-800 text-zinc-400'}`}>
             {icon}

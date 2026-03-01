@@ -13,7 +13,7 @@ export function ProtectedRoute({ children, allowedRoles }: ProtectedRouteProps) 
 
   // Show loading while checking auth state
   if (isLoading) {
-    return <LoadingScreen message="Checking authentication..." />;
+    return null;
   }
 
   // Not authenticated - redirect to login

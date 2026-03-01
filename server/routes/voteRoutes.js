@@ -8,8 +8,10 @@ const voterMiddleware = require('../middleware/voterMiddleware');
 // Only authenticated users with role as 'voter' can cast a vote
 router.post('/cast', authMiddleware, voterMiddleware, voteController.castVote);
 
-router.get('/status/:electionId', voteController.checkVoterStatus);
+// FIXED: Added authMiddleware and voterMiddleware to prevent the "req.user is undefined" crash
+router.get('/status/:electionId', authMiddleware, voterMiddleware, voteController.checkVoterStatus);
 
+// Protected route for getting election results
 router.get('/turnout/:electionId', authMiddleware, resultController.getElectionResults);
 
 module.exports = router;

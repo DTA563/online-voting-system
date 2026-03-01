@@ -10,17 +10,13 @@ interface AuthContextType {
   isLoading: boolean;
   // login function accepts credentials AND an optional role check
   login: (credentials: LoginCredentials, allowedRoles?: string[]) => Promise<User>;
-  logout: () => void;
+  logout: () => Promise<void>; // Updated to return a Promise
   isAdmin: boolean;
   isSuperAdmin: boolean;
   isVoter: boolean;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
-
-// 🛠️ DEVELOPMENT SWITCH
-const ENABLE_MOCK_AUTH = false; 
-const isMockingEnabled = import.meta.env.DEV && ENABLE_MOCK_AUTH;
 
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<User | null>(null);
@@ -35,8 +31,20 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       const storedUser = localStorage.getItem('user');
 
       if (storedToken && storedUser) {
-        setToken(storedToken);
-        setUser(JSON.parse(storedUser));
+        try {
+          const parsedUser = JSON.parse(storedUser);
+          console.log('🔐 AuthContext - User loaded from localStorage:', parsedUser);
+          console.log('🔐 AuthContext - User full_name:', parsedUser?.full_name);
+          console.log('🔐 AuthContext - All user properties:', Object.keys(parsedUser));
+          
+          setToken(storedToken);
+          setUser(parsedUser);
+        } catch (error) {
+          console.error('🔐 AuthContext - Error parsing stored user:', error);
+          // Clear invalid data
+          localStorage.removeItem('token');
+          localStorage.removeItem('user');
+        }
         setIsLoading(false);
         return;
       }
@@ -61,17 +69,14 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }, [isLoading, user, token, navigate]);
 
   const login = async (credentials: LoginCredentials, allowedRoles?: string[]): Promise<User> => {
-    
-    // --- Mock Login Logic (Keep existing if you use it) ---
-    if (isMockingEnabled) {
-       // ... (your existing mock logic)
-       return {} as User;
-    }
-
     try {
       console.log("🔵 Attempting login...", credentials);
       
       const data = await authApi.login(credentials);
+      
+      console.log("🔵 Login response data:", data);
+      console.log("🔵 User object from API:", data?.user);
+      console.log("🔵 User full_name from API:", data?.user?.full_name);
 
       // 1. Check if token exists
       if (!data || !data.token) {
@@ -91,12 +96,14 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       localStorage.setItem('token', data.token);
       localStorage.setItem('user', JSON.stringify(data.user));
 
+      console.log("🔵 User stored successfully:", data.user);
+
       return data.user;
 
     } catch (error: any) {
       console.error("❌ Login Error:", error);
 
-      // ✅ NEW ERROR HANDLING LOGIC ✅
+      // ✅ ERROR HANDLING LOGIC
       // If the server sends a response (404, 401, etc.)
       if (error.response) {
         const status = error.response.status;
@@ -104,7 +111,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         // 404 = User Not Found
         // 401 = Password Incorrect
         if (status === 404 || status === 401) {
-          // We intentionally hide the specific detail for security (and to fix your UI issue)
+          // We intentionally hide the specific detail for security
           throw new Error("Invalid credentials. Please check your ID and Password.");
         }
       }
@@ -114,12 +121,25 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }
   };
 
-  const logout = () => {
-    setToken(null);
-    setUser(null);
-    localStorage.removeItem('token');
-    localStorage.removeItem('user');
-    // Note: The useEffect above will handle the redirect automatically
+  const logout = async () => {
+    console.log('🔐 AuthContext - Logging out');
+    
+    try {
+      // 1. Hit the backend endpoint FIRST so the authMiddleware can read the token
+      // and trigger your AuditLog.record
+      await authApi.logout();
+    } catch (error) {
+      // We catch the error just in case there's a network glitch, 
+      // but we still want to log them out locally anyway.
+      console.error("❌ Failed to log out on the server:", error);
+    } finally {
+      // 2. Clear local auth state
+      setToken(null);
+      setUser(null);
+      localStorage.removeItem('token');
+      localStorage.removeItem('user');
+      // Note: The useEffect above will handle the redirect automatically
+    }
   };
 
   const value: AuthContextType = {

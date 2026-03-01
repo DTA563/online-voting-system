@@ -23,6 +23,7 @@ CREATE TABLE users (
     role ENUM('voter', 'admin', 'super_admin') DEFAULT 'voter',
     status ENUM('active', 'deactivated') DEFAULT 'active',
     is_verified BOOLEAN DEFAULT TRUE,
+    last_login DATETIME DEFAULT NULL,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 ) ENGINE=InnoDB;
 

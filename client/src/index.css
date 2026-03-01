@@ -1,9 +1,86 @@
 @import "tailwindcss";
 
-/* Set a dark background by default to prevent white flashes during transitions/loading */
+/* Theme Variables - Light Mode (default) */
+:root {
+  /* Background colors */
+  --bg-primary: #ffffff;
+  --bg-secondary: #f3f4f6;
+  --bg-card: #f9fafb;
+  --bg-card-hover: #f3f4f6;
+  --bg-sidebar: #ffffff;
+  --bg-sidebar-hover: #f3f4f6;
+  --bg-sidebar-active: #e5e7eb;
+  
+  /* Text colors */
+  --text-primary: #111827;
+  --text-secondary: #4b5563;
+  --text-tertiary: #6b7280;
+  --text-accent: #06b6d4;
+  
+  /* Border colors */
+  --border-light: #e5e7eb;
+  --border-medium: #d1d5db;
+  --border-sidebar: #e5e7eb;
+  
+  /* Icon colors */
+  --icon-primary: #4b5563;
+  --icon-secondary: #6b7280;
+  
+  /* Accent colors */
+  --accent-primary: #06b6d4;
+  --accent-secondary: #3b82f6;
+  --accent-success: #10b981;
+  --accent-warning: #f59e0b;
+  --accent-error: #ef4444;
+  
+  /* Overlay colors */
+  --overlay-light: rgba(0, 0, 0, 0.05);
+  --overlay-medium: rgba(0, 0, 0, 0.1);
+}
+
+/* Theme Variables - Dark Mode */
+[data-theme="dark"] {
+  /* Background colors */
+  --bg-primary: #000000;
+  --bg-secondary: #0a0a0a;
+  --bg-card: #0a0a0a;
+  --bg-card-hover: #1a1a1a;
+  --bg-sidebar: #0a0a0a;
+  --bg-sidebar-hover: #1a1a1a;
+  --bg-sidebar-active: #2a2a2a;
+  
+  /* Text colors */
+  --text-primary: #ffffff;
+  --text-secondary: #9ca3af;
+  --text-tertiary: #6b7280;
+  --text-accent: #06b6d4;
+  
+  /* Border colors */
+  --border-light: rgba(255, 255, 255, 0.1);
+  --border-medium: rgba(255, 255, 255, 0.2);
+  --border-sidebar: rgba(255, 255, 255, 0.1);
+  
+  /* Icon colors */
+  --icon-primary: #9ca3af;
+  --icon-secondary: #6b7280;
+  
+  /* Accent colors (keep same for consistency) */
+  --accent-primary: #06b6d4;
+  --accent-secondary: #3b82f6;
+  --accent-success: #10b981;
+  --accent-warning: #f59e0b;
+  --accent-error: #ef4444;
+  
+  /* Overlay colors */
+  --overlay-light: rgba(255, 255, 255, 0.05);
+  --overlay-medium: rgba(255, 255, 255, 0.1);
+}
+
+/* Set background and text colors using variables */
 body {
-  background-color: #000000;
-  color: #ffffff;
+  background-color: var(--bg-primary);
+  color: var(--text-primary);
+  transition: background-color 0.3s ease, color 0.2s ease;
 }
 
 /* Ultra smooth scrolling for anchor links */
@@ -77,3 +154,24 @@ html {
 .animate-stagger > *:nth-child(3) { animation-delay: 0.3s; }
 .animate-stagger > *:nth-child(4) { animation-delay: 0.4s; }
 .animate-stagger > *:nth-child(5) { animation-delay: 0.5s; }
+
+/* Utility classes for theme-aware styling */
+.bg-primary { background-color: var(--bg-primary); }
+.bg-secondary { background-color: var(--bg-secondary); }
+.bg-card { background-color: var(--bg-card); }
+.bg-card-hover { background-color: var(--bg-card-hover); }
+.bg-sidebar { background-color: var(--bg-sidebar); }
+.bg-sidebar-hover { background-color: var(--bg-sidebar-hover); }
+.bg-sidebar-active { background-color: var(--bg-sidebar-active); }
+
+.text-primary { color: var(--text-primary); }
+.text-secondary { color: var(--text-secondary); }
+.text-tertiary { color: var(--text-tertiary); }
+.text-accent { color: var(--accent-primary); }
+
+.border-border { border-color: var(--border-light); }
+.border-border-medium { border-color: var(--border-medium); }
+.border-sidebar { border-color: var(--border-sidebar); }
+
+.icon-primary { color: var(--icon-primary); }
+.icon-secondary { color: var(--icon-secondary); }

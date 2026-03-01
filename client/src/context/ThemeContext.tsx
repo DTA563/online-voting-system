@@ -1,4 +1,4 @@
-import { createContext, useContext, useState, type ReactNode } from 'react';
+import { createContext, useContext, useState, useEffect, type ReactNode } from 'react';
 
 interface ThemeContextType {
   isDark: boolean;
@@ -17,6 +17,15 @@ export function ThemeProvider({ children }: { children: ReactNode }) {
     const saved = localStorage.getItem('voter-theme');
     return saved ? saved === 'dark' : true;
   });
+
+  // Apply theme to document element whenever isDark changes
+  useEffect(() => {
+    if (isDark) {
+      document.documentElement.setAttribute('data-theme', 'dark');
+    } else {
+      document.documentElement.removeAttribute('data-theme');
+    }
+  }, [isDark]);
 
   const toggleTheme = () => {
     setIsDark(prev => {

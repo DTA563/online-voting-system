@@ -8,6 +8,27 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     
     <title>SmartBallot</title>
+    <style>
+      /* Prevent white flash on load by setting dark background immediately */
+      html, body {
+        background-color: #09090b; /* zinc-950 */
+        margin: 0;
+        padding: 0;
+      }
+    </style>
+    <script>
+      // Sync theme before first paint to prevent flash
+      (function() {
+        try {
+          var stored = localStorage.getItem('voter-theme');
+          if (stored === null || stored === 'true') {
+            document.documentElement.setAttribute('data-theme', 'dark');
+          }
+        } catch(e) {
+          document.documentElement.setAttribute('data-theme', 'dark');
+        }
+      })();
+    </script>
   </head>
   <body>
     <div id="root"></div>

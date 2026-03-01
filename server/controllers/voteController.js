@@ -2,19 +2,26 @@ const Vote = require('../models/vote');
 
 /**
  * checkVoterStatus
- * Handles the handshake to see if a voter has already participated.
+ * Handles the handshake to see if a voter is eligible and has already participated.
  */
 exports.checkVoterStatus = async (req, res) => {
     try {
         const { electionId } = req.params;
         const userId = req.user.id;
 
-        // FIX 2: Silent guard for race conditions. 
-        // If frontend passes 'undefined', we return 200 OK with 'not voted' status.
+        // Silent guard for race conditions. 
         if (!electionId || electionId === 'undefined' || electionId === 'null') {
             return res.json({ status: "success", data: { has_voted: false } });
         }
 
+        // 1. NEW: Check if they are actually on the voter roll for this election
+        const isEligible = await Vote.checkEligibility(userId, electionId);
+        if (!isEligible) {
+            // Throw a 403 so the frontend Axios catch block knows to skip this election
+            return res.status(403).json({ message: "User is not registered for this election." });
+        }
+
+        // 2. If they are eligible, check if they have cast a ballot yet
         const status = await Vote.checkVoterStatus(userId, electionId);
         res.json({ 
             status: "success", 

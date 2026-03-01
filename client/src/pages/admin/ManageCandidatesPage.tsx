@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
-import { LoadingScreen, LoadingSpinner } from '../../components/ui';
+import { LoadingSpinner } from '../../components/ui';
 import { electionsApi, positionsApi, candidatesApi } from '../../api';
 import { Election, Position, Candidate } from '../../types';
 
@@ -12,8 +12,7 @@ const Icons = {
   Edit: () => <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" /></svg>,
   User: () => <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" /></svg>,
   Search: () => <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" /></svg>,
-  Save: () => <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M8 7H5a2 2 0 00-2 2v9a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-3m-1 4l-3 3m0 0l-3-3m3 3V4" /></svg>,
-  Refresh: () => <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" /></svg>
+  Save: () => <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M8 7H5a2 2 0 00-2 2v9a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-3m-1 4l-3 3m0 0l-3-3m3 3V4" /></svg>
 };
 
 export function ManageCandidatesPage() {
@@ -31,12 +30,14 @@ export function ManageCandidatesPage() {
   const [mounted, setMounted] = useState(false);
   const [showForm, setShowForm] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const [isRefreshing, setIsRefreshing] = useState(false);
   const [error, setError] = useState<string | null>(null);
   
   // Form Data
   const [editingCandidate, setEditingCandidate] = useState<Candidate | null>(null);
   const [formData, setFormData] = useState({ fullName: '', manifesto: '', photoUrl: '' });
+  
+  // State for the actual file
+  const [photoFile, setPhotoFile] = useState<File | null>(null);
 
   // --- Effects ---
   useEffect(() => {
@@ -112,7 +113,6 @@ export function ManageCandidatesPage() {
   // --- Loaders ---
   const loadElections = async () => {
     try {
-      setIsRefreshing(true);
       setError(null);
       console.log('Fetching elections from API...');
       
@@ -137,7 +137,6 @@ export function ManageCandidatesPage() {
       console.error('Error loading elections:', err); 
       setError('Failed to load elections. Please check your connection.');
     } finally { 
-      setIsRefreshing(false);
       setTimeout(() => setIsLoading(false), 500); 
     }
   };
@@ -174,10 +173,6 @@ export function ManageCandidatesPage() {
   };
 
   // --- Handlers ---
-  const handleRefresh = async () => {
-    await loadElections();
-  };
-
   const handleEdit = (candidate: Candidate) => {
     setEditingCandidate(candidate);
     setFormData({
@@ -185,9 +180,38 @@ export function ManageCandidatesPage() {
       manifesto: candidate.manifesto || '',
       photoUrl: candidate.photo_url || ''
     });
+    setPhotoFile(null); // Reset file when editing
     setShowForm(true);
   };
 
+  // Handle photo upload
+  const handlePhotoUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file) {
+      // Check file size (5MB limit)
+      if (file.size > 5 * 1024 * 1024) {
+        alert('File too large. Please select an image under 5MB.');
+        return;
+      }
+      
+      // Check file type
+      if (!file.type.startsWith('image/')) {
+        alert('Please select an image file.');
+        return;
+      }
+      
+      setPhotoFile(file);
+      
+      // Create preview
+      const reader = new FileReader();
+      reader.onloadend = () => {
+        setFormData(prev => ({ ...prev, photoUrl: reader.result as string }));
+      };
+      reader.readAsDataURL(file);
+    }
+  };
+
+  // Handle form submission with FormData and Auth token
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!selectedPositionId) return;
@@ -195,38 +219,65 @@ export function ManageCandidatesPage() {
     setError(null);
 
     try {
-      let result;
+      // Get token from localStorage
+      const token = localStorage.getItem('token');
       
-      if (editingCandidate) {
-        // Update existing candidate
-        console.log('Updating candidate ID:', editingCandidate.candidate_id);
-        result = await candidatesApi.update(editingCandidate.candidate_id, {
-          full_name: formData.fullName,
-          manifesto: formData.manifesto || null,
-          photo_url: formData.photoUrl || null,
-        });
-      } else {
-        // Create new candidate
-        console.log('Creating new candidate for position:', selectedPositionId);
-        result = await candidatesApi.create({
-          position_id: selectedPositionId,
-          full_name: formData.fullName,
-          manifesto: formData.manifesto || null,
-          photo_url: formData.photoUrl || null,
-        });
+      if (!token) {
+        throw new Error('No token found. Please log in again.');
       }
 
-      if (result) {
-        console.log('Candidate saved successfully');
-        await loadCandidates(selectedPositionId);
-        closeForm();
-      } else {
-        throw new Error('Operation failed - no data returned');
+      // Create FormData
+      const formDataObj = new FormData();
+      formDataObj.append('position_id', selectedPositionId.toString());
+      formDataObj.append('full_name', formData.fullName);
+      if (formData.manifesto) {
+        formDataObj.append('manifesto', formData.manifesto);
       }
-    } catch (err) {
+      
+      // Add photo if a new file was selected
+      if (photoFile) {
+        formDataObj.append('photo', photoFile);
+      } else if (editingCandidate && formData.photoUrl && !formData.photoUrl.startsWith('data:')) {
+        // If it's an existing photo URL (from server), send it
+        formDataObj.append('photo_url', formData.photoUrl);
+      }
+
+      // Determine endpoint and method
+      const url = editingCandidate 
+        ? `http://localhost:5001/api/candidates/${editingCandidate.candidate_id}`
+        : 'http://localhost:5001/api/candidates';
+      
+      const method = editingCandidate ? 'PUT' : 'POST';
+
+      // Send request WITH AUTH HEADER
+      const response = await fetch(url, {
+        method: method,
+        headers: {
+          'Authorization': `Bearer ${token}` // Add the token here
+        },
+        body: formDataObj,
+      });
+
+      if (!response.ok) {
+        if (response.status === 401) {
+          throw new Error('Unauthorized. Please log in again.');
+        }
+        const errorData = await response.json();
+        throw new Error(errorData.message || `Server error: ${response.status}`);
+      }
+
+      const result = await response.json();
+      console.log('Candidate saved:', result);
+      
+      // Refresh the list
+      await loadCandidates(selectedPositionId);
+      
+      // Close form and reset
+      closeForm();
+    } catch (err: any) {
       console.error('Error submitting candidate:', err);
-      setError('Operation failed. Please check console.');
-      alert('Operation failed. Please check console.');
+      setError(err.message);
+      alert('Error: ' + err.message);
     } finally {
       setIsSubmitting(false);
     }
@@ -253,13 +304,46 @@ export function ManageCandidatesPage() {
     setShowForm(false);
     setEditingCandidate(null);
     setFormData({ fullName: '', manifesto: '', photoUrl: '' });
+    setPhotoFile(null); // Reset the file
   };
 
   const currentElectionTitle = elections.find(e => e.election_id === selectedElectionId)?.title;
   const currentPositionTitle = positions.find(p => p.position_id === selectedPositionId)?.title;
 
+  // --- Layout Skeleton Loader ---
   if (isLoading) {
-    return <LoadingScreen />;
+    return (
+      <div className="max-w-7xl mx-auto p-6 lg:p-10 space-y-8 w-full min-h-screen">
+        {/* Header Skeleton */}
+        <div className="flex flex-col md:flex-row justify-between gap-6 pb-6 border-b border-white/5 animate-pulse">
+          <div className="space-y-3">
+            <div className="h-4 w-32 bg-white/5 rounded-md"></div>
+            <div className="h-8 w-64 bg-white/10 rounded-lg"></div>
+            <div className="h-4 w-48 bg-white/5 rounded-md"></div>
+          </div>
+          <div className="h-14 w-36 bg-white/5 rounded-xl border border-white/10 mt-4 md:mt-0"></div>
+        </div>
+
+        <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 animate-pulse">
+          {/* Left Column Skeleton */}
+          <div className="lg:col-span-4 space-y-6">
+            <div className="h-[380px] bg-white/5 rounded-3xl border border-white/5"></div>
+          </div>
+          {/* Right Column Skeleton */}
+          <div className="lg:col-span-8 space-y-6">
+            <div className="flex items-center justify-between">
+               <div className="h-8 w-48 bg-white/10 rounded-lg"></div>
+               <div className="h-6 w-20 bg-white/5 rounded-full"></div>
+            </div>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              {[1, 2, 3, 4].map(i => (
+                <div key={i} className="h-36 bg-white/5 rounded-2xl border border-white/5"></div>
+              ))}
+            </div>
+          </div>
+        </div>
+      </div>
+    );
   }
 
   return (
@@ -267,11 +351,9 @@ export function ManageCandidatesPage() {
       <style>{`
         @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
         @keyframes slideUp { from { transform: translateY(20px); opacity: 0; } to { transform: translateY(0); opacity: 1; } }
-        @keyframes spin { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }
         .animate-enter { animation: slideUp 0.6s cubic-bezier(0.16, 1, 0.3, 1) forwards; }
         .delay-100 { animation-delay: 100ms; }
         .delay-200 { animation-delay: 200ms; }
-        .spin { animation: spin 1s linear infinite; }
       `}</style>
 
       <div className="text-white font-sans selection:bg-cyan-500/30 pb-12">
@@ -281,9 +363,6 @@ export function ManageCandidatesPage() {
           {/* --- Header --- */}
           <header className={`flex flex-col md:flex-row md:items-center justify-between gap-6 pb-6 border-b border-white/5 opacity-0 ${mounted ? 'animate-enter' : ''}`}>
             <div>
-              <Link to="/admin" className="flex items-center gap-2 text-gray-500 hover:text-white transition-colors text-sm mb-2 group">
-                 <Icons.Back /> <span className="group-hover:translate-x-1 transition-transform">Back to Dashboard</span>
-              </Link>
               <h1 className="text-3xl font-bold tracking-tight text-white">
                 Candidate Management
               </h1>
@@ -298,20 +377,6 @@ export function ManageCandidatesPage() {
             </div>
 
             <div className="flex items-center gap-4">
-              <button
-                onClick={handleRefresh}
-                disabled={isRefreshing}
-                className="p-2.5 rounded-xl bg-white/5 hover:bg-white/10 border border-white/10 transition-all hover:border-cyan-500/30 disabled:opacity-50 disabled:cursor-not-allowed group"
-                title="Refresh elections"
-              >
-                {isRefreshing ? (
-                  <svg className="w-5 h-5 spin" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
-                  </svg>
-                ) : (
-                  <Icons.Refresh />
-                )}
-              </button>
               <div className="px-5 py-2.5 rounded-xl bg-white/5 border border-white/10 backdrop-blur-md flex flex-col items-end min-w-36">
                 <span className="text-[10px] bg-linear-to-r from-blue-300 to-cyan-300 bg-clip-text text-transparent font-bold uppercase tracking-wider">Total Candidates</span>
                 <span className="font-mono text-xl text-white font-bold leading-none mt-1">{candidates.length}</span>
@@ -350,14 +415,25 @@ export function ManageCandidatesPage() {
                           />
                         </InputGroup>
 
-                        <InputGroup label="Photo URL">
-                          <input 
-                            type="url" 
-                            className="w-full bg-black/50 border border-white/10 rounded-xl px-4 py-3 text-sm text-white focus:border-cyan-500/50 focus:ring-1 focus:ring-cyan-500/50 transition-all outline-none"
-                            placeholder="https://..."
-                            value={formData.photoUrl}
-                            onChange={e => setFormData({...formData, photoUrl: e.target.value})}
-                          />
+                        <InputGroup label="Candidate Photo">
+                          <div className="flex items-center gap-4">
+                            {formData.photoUrl && (
+                              <div className="shrink-0 w-12 h-12 rounded-full border border-white/10 overflow-hidden bg-black/50">
+                                <img src={formData.photoUrl} alt="Preview" className="w-full h-full object-cover" />
+                              </div>
+                            )}
+                            <input 
+                              type="file" 
+                              accept="image/*"
+                              className="w-full text-sm text-gray-400 file:mr-4 file:py-2.5 file:px-4 file:rounded-xl file:border-0 file:text-sm file:font-bold file:bg-white/5 file:text-cyan-400 hover:file:bg-white/10 transition-all cursor-pointer"
+                              onChange={handlePhotoUpload}
+                            />
+                          </div>
+                          {photoFile && (
+                            <p className="text-xs text-green-400 mt-1">
+                              Selected: {photoFile.name} ({(photoFile.size / 1024).toFixed(1)} KB)
+                            </p>
+                          )}
                         </InputGroup>
 
                         <InputGroup label="Manifesto / Platform">
@@ -393,7 +469,7 @@ export function ManageCandidatesPage() {
                             <select 
                               value={selectedElectionId || ''}
                               onChange={(e) => setSelectedElectionId(Number(e.target.value))}
-                              className="w-full appearance-none bg-white/5 border border-white/10 rounded-xl px-4 py-3 text-sm text-white focus:border-cyan-500/50 outline-none cursor-pointer hover:bg-white/10 transition-colors"
+                              className="w-full appearance-none bg-white/5 border border-white/10 rounded-xl pl-4 pr-12 py-3 text-sm text-white focus:border-cyan-500/50 outline-none cursor-pointer hover:bg-white/10 transition-colors"
                             >
                               {elections.length === 0 ? (
                                 <option value="" disabled className="bg-gray-900">No elections available</option>
@@ -406,13 +482,7 @@ export function ManageCandidatesPage() {
                               )}
                             </select>
                             <div className="absolute right-4 top-3.5 pointer-events-none text-gray-500">
-                              {isRefreshing ? (
-                                <svg className="w-5 h-5 spin" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
-                                </svg>
-                              ) : (
                                 <Icons.Search />
-                              )}
                             </div>
                           </div>
                           {elections.length > 0 && (
@@ -429,7 +499,7 @@ export function ManageCandidatesPage() {
                               value={selectedPositionId || ''}
                               onChange={(e) => setSelectedPositionId(Number(e.target.value))}
                               disabled={positions.length === 0}
-                              className="w-full appearance-none bg-white/5 border border-white/10 rounded-xl px-4 py-3 text-sm text-white focus:border-cyan-500/50 outline-none cursor-pointer hover:bg-white/10 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                              className="w-full appearance-none bg-white/5 border border-white/10 rounded-xl pl-4 pr-12 py-3 text-sm text-white focus:border-cyan-500/50 outline-none cursor-pointer hover:bg-white/10 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
                             >
                                <option value="" disabled className="bg-gray-900">
                                  {positions.length === 0 ? 'No positions available' : 'Select a position...'}
@@ -473,7 +543,7 @@ export function ManageCandidatesPage() {
                   </h2>
                   
                   {selectedPositionId && candidates.length > 0 && (
-                    <span className="text-xs text-gray-500 bg-white/5 px-3 py-1 rounded-full">
+                    <span className="text-xs text-gray-500 bg-white/5 px-3 py-1 rounded-full border border-white/10">
                       {candidates.length} candidate{candidates.length !== 1 ? 's' : ''}
                     </span>
                   )}
@@ -529,6 +599,11 @@ function EmptyState({ message }: { message: string }) {
 }
 
 function CandidateCard({ candidate, onEdit, onDelete }: { candidate: Candidate, onEdit: () => void, onDelete: () => void }) {
+  // Fix photo URL if it's from the server
+  const photoUrl = candidate.photo_url?.startsWith('/uploads') 
+    ? `http://localhost:5001${candidate.photo_url}` 
+    : candidate.photo_url;
+
   return (
     <div className="group relative bg-[#0a0a0a] border border-white/10 hover:border-cyan-500/30 rounded-2xl p-5 transition-all duration-300 hover:-translate-y-1 hover:shadow-[0_10px_30px_rgba(0,0,0,0.5)] overflow-hidden">
        {/* Background Glow on Hover */}
@@ -536,8 +611,8 @@ function CandidateCard({ candidate, onEdit, onDelete }: { candidate: Candidate, 
        
        <div className="relative z-10 flex items-start gap-4">
           <div className="relative shrink-0">
-             {candidate.photo_url ? (
-               <img src={candidate.photo_url} alt={candidate.full_name} className="w-14 h-14 rounded-full object-cover border-2 border-white/10 group-hover:border-cyan-400/50 transition-colors shadow-lg" />
+             {photoUrl ? (
+               <img src={photoUrl} alt={candidate.full_name} className="w-14 h-14 rounded-full object-cover border-2 border-white/10 group-hover:border-cyan-400/50 transition-colors shadow-lg bg-black/50" />
              ) : (
                <div className="w-14 h-14 rounded-full bg-linear-to-br from-gray-800 to-black border border-white/10 flex items-center justify-center text-gray-500 group-hover:text-cyan-400 transition-colors">
                  <svg className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" /></svg>
@@ -551,7 +626,7 @@ function CandidateCard({ candidate, onEdit, onDelete }: { candidate: Candidate, 
           <div className="flex-1 min-w-0">
              <div className="flex justify-between items-start">
                <h3 className="text-white font-bold truncate pr-2 group-hover:text-cyan-400 transition-colors">{candidate.full_name}</h3>
-               <span className="text-[10px] font-mono text-gray-600 bg-white/5 px-1.5 py-0.5 rounded">#{candidate.candidate_id}</span>
+               <span className="text-[10px] font-mono text-gray-600 bg-white/5 px-1.5 py-0.5 rounded border border-white/5">#{candidate.candidate_id}</span>
              </div>
              
              <p className="text-xs text-gray-500 mt-2 line-clamp-2 min-h-[2.5em] leading-relaxed">
