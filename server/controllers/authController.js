@@ -3,9 +3,7 @@ const AuditLog = require('../models/auditlog'); // ADDED: Import the AuditLog mo
 const bcrypt = require('bcryptjs');
 const jwt = require('jsonwebtoken');
 
-/**
- * REGISTER CONTROLLER
- */
+// REGISTER CONTROLLER
 exports.register = async (req, res) => {
     try {
         const { user_id, userId, fullName, full_name, password, role } = req.body;
@@ -36,12 +34,12 @@ exports.register = async (req, res) => {
         // Note: Since they aren't logged in yet, we use the ID they just created
         await AuditLog.record(finalId, `Registered new account as ${assignedRole}`, req.ip);
 
-        console.log("✅ User Registered Successfully:", finalId);
+        console.log("User Registered Successfully:", finalId);
         res.status(201).json({ status: "success", message: "User registered successfully!" });
 
     } catch (err) {
         // This log will appear in your VS Code terminal
-        console.error("❌ REGISTRATION DB ERROR:", err.message);
+        console.error(" REGISTRATION DB ERROR:", err.message);
         res.status(500).json({ 
             message: "Database error during registration.", 
             error: err.message 
@@ -49,9 +47,7 @@ exports.register = async (req, res) => {
     }
 };
 
-/**
- * --- LOGIN CONTROLLER ---
- */
+// LOGIN CONTROLLER 
 exports.login = async (req, res) => {
     try {
         const { user_id, userId, password } = req.body;
@@ -90,18 +86,16 @@ exports.login = async (req, res) => {
         res.json({
             status: "success",
             token,
-            user: { id: user.user_id, name: user.full_name, role: user.role }
+            user: { id: user.user_id, full_name: user.full_name, role: user.role }
         });
 
     } catch (err) {
-        console.error("❌ LOGIN ERROR:", err.message);
+        console.error("LOGIN ERROR:", err.message);
         res.status(500).json({ message: "Server error during login." });
     }
 };
 
-/**
- * --- LOGOUT CONTROLLER ---
- */
+// LOGOUT CONTROLLER
 exports.logout = async (req, res) => {
     try {
         // req.user exists because this route should be protected by your auth middleware
@@ -117,7 +111,7 @@ exports.logout = async (req, res) => {
         res.json({ status: "success", message: "Logged out successfully." });
 
     } catch (err) {
-        console.error("❌ LOGOUT ERROR:", err.message);
+        console.error("LOGOUT ERROR:", err.message);
         res.status(500).json({ message: "Server error during logout." });
     }
 };

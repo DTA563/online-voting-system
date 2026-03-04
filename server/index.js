@@ -30,11 +30,9 @@ const positionRoutes = require('./routes/positionRoutes');
 const candidateRoutes = require('./routes/candidateRoutes');
 
 const app = express();
-const PORT = process.env.PORT || 5000;
+const PORT = process.env.PORT || 5001;
 
-// ==========================================
-// 🔌 SOCKET.IO SETUP
-// ==========================================
+// SOCKET.IO SETUP
 // Create the HTTP server and attach Socket.io
 const server = http.createServer(app);
 const io = new Server(server, {
@@ -49,7 +47,7 @@ app.set('io', io);
 
 // Listen for connections
 io.on('connection', (socket) => {
-    console.log('🔌 A user connected:', socket.id);
+    console.log('A user connected:', socket.id);
 
     // When the React frontend tells us who logged in, put them in a personal room
     socket.on('register_user', (userId) => {
@@ -60,10 +58,9 @@ io.on('connection', (socket) => {
     });
 
     socket.on('disconnect', () => {
-        console.log('🔴 User disconnected:', socket.id);
+        console.log(' User disconnected:', socket.id);
     });
 });
-// ==========================================
 
 
 app.set('trust proxy', true);
