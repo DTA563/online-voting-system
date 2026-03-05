@@ -18,6 +18,10 @@ const customStyles = `
   .delay-200 { animation-delay: 0.2s; }
   .delay-300 { animation-delay: 0.4s; }
 
+  @keyframes floatSubtle { 0%, 100% { transform: translateY(0); } 50% { transform: translateY(-10px); } }
+  @media (max-width: 1023px) { .animate-float-subtle { animation: floatSubtle 5s ease-in-out infinite; } }
+
+
   /* --- EXISTING ANIMATIONS --- */
   @keyframes slideInTiltLeft {
     0% { opacity: 0; transform: translateX(-50px) rotate(0deg); }
@@ -61,6 +65,15 @@ const customStyles = `
     50% { transform: translateY(-20px); }
   }
   .animate-float-vertical { animation: floatVertical 6s ease-in-out infinite; }
+
+  /* --- NEW: Subtle Float for Mobile Content --- */
+  @keyframes floatSubtle {
+    0%, 100% { transform: translateY(0); }
+    50% { transform: translateY(-10px); }
+  }
+  @media (max-width: 1023px) {
+    .animate-float-subtle { animation: floatSubtle 5s ease-in-out infinite; }
+  }
 `;
 
 // --- Helper Component: Typewriter Effect ---
@@ -181,7 +194,7 @@ export function LandingPage() {
         <div className="max-w-7xl mx-auto grid grid-cols-1 lg:grid-cols-2 gap-12 items-center relative z-10 w-full">
           
           {/* Left Column: Content */}
-          <div className="flex flex-col justify-center relative z-20">
+          <div className="flex flex-col items-center text-center lg:items-start lg:text-left relative z-20 animate-float-subtle">
             <h1 className="text-4xl md:text-6xl font-extrabold tracking-tight mb-6 leading-[1.1] animate-fade-in-up shadow-black drop-shadow-lg">
               Democracy, <br />
               <span className="text-transparent bg-clip-text bg-linear-to-r from-blue-400 via-cyan-300 to-emerald-400">
@@ -194,16 +207,16 @@ export function LandingPage() {
             </p>
             
             {/* Buttons - UPDATED FOR WIDTH */}
-            <div className="flex flex-col sm:flex-row gap-4 mb-10 animate-fade-in-up delay-200">
+            <div className="flex flex-col sm:flex-row gap-4 mb-10 animate-fade-in-up delay-200 w-full sm:w-auto">
               <button 
                 onClick={() => smoothScrollTo('features')}
-                className="bg-linear-to-r from-blue-500 to-cyan-400 hover:from-blue-600 hover:to-cyan-500 text-white px-10 py-4 w-full sm:w-auto rounded-xl text-lg font-bold transition-all shadow-[0_0_20px_rgba(59,130,246,0.5)] hover:shadow-[0_0_30px_rgba(59,130,246,0.7)] transform hover:-translate-y-1 whitespace-nowrap"
+                className="bg-linear-to-r from-blue-500 to-cyan-400 hover:from-blue-600 hover:to-cyan-500 text-white px-10 py-4 w-full sm:w-auto rounded-full text-lg font-bold transition-all shadow-[0_0_20px_rgba(59,130,246,0.5)] hover:shadow-[0_0_30px_rgba(59,130,246,0.7)] transform hover:-translate-y-1 whitespace-nowrap"
               >
-                Get Started
+                View Features
               </button>
               <button 
                 onClick={() => smoothScrollTo('how-it-works')} 
-                className="backdrop-blur-sm bg-white/5 hover:bg-white/10 border border-white/20 text-white px-10 py-4 w-full sm:w-auto rounded-xl text-lg font-bold transition-all hover:border-white/40 whitespace-nowrap"
+                className="backdrop-blur-sm bg-white/5 hover:bg-white/10 border border-white/20 text-white px-10 py-4 w-full sm:w-auto rounded-full text-lg font-bold transition-all hover:border-white/40 whitespace-nowrap"
               >
                 How It Works
               </button>
@@ -409,7 +422,7 @@ export function LandingPage() {
             {/* Feature 1: Structural Anonymity - Large Card */}
             <div className="md:col-span-8">
               <ScrollReveal delay={100}>
-                <div className="group relative overflow-hidden rounded-[2.5rem] bg-[#0c0c0c] border border-white/10 p-10 hover:border-white/20 transition-all duration-500 h-full">
+                <div className="group relative overflow-hidden rounded-[2.5rem] bg-[#0c0c0c] border border-white/10 p-6 md:p-10 hover:border-white/20 transition-all duration-500 h-full">
                   <div className="absolute inset-0 bg-linear-to-br from-blue-500/5 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-500"></div>
                   <div className="relative z-10 flex flex-col h-full justify-between">
                       <div className="mb-8">
@@ -432,7 +445,7 @@ export function LandingPage() {
             {/* Feature 2: Time Bucketing - Tall/Side Card */}
             <div className="md:col-span-4">
               <ScrollReveal delay={200}>
-                <div className="group relative overflow-hidden rounded-[2.5rem] bg-[#0e0e0e] border border-white/10 p-10 hover:border-white/20 transition-all duration-500 h-full">
+                <div className="group relative overflow-hidden rounded-[2.5rem] bg-[#0e0e0e] border border-white/10 p-6 md:p-10 hover:border-white/20 transition-all duration-500 h-full">
                   <div className="absolute top-0 right-0 w-64 h-64 bg-emerald-500/10 rounded-full blur-[80px] -z-10 translate-x-1/2 -translate-y-1/2"></div>
                   <div className="w-14 h-14 rounded-2xl bg-emerald-500/10 flex items-center justify-center border border-emerald-500/20 mb-6 text-emerald-400">
                       <svg className="w-7 h-7" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
@@ -449,7 +462,7 @@ export function LandingPage() {
             {/* Feature 3: Cryptography - Full Width Card */}
             <div className="md:col-span-12">
               <ScrollReveal delay={300}>
-                <div className="group relative overflow-hidden rounded-[2.5rem] bg-[#0c0c0c] border border-white/10 p-10 hover:border-white/20 transition-all duration-500">
+                <div className="group relative overflow-hidden rounded-[2.5rem] bg-[#0c0c0c] border border-white/10 p-6 md:p-10 hover:border-white/20 transition-all duration-500">
                   <div className="absolute inset-0 bg-white/5 opacity-0 group-hover:opacity-10 transition-opacity"></div>
                   <div className="grid md:grid-cols-2 gap-12 items-center">
                       <div>

@@ -62,16 +62,24 @@ exports.login = async (req, res) => {
         }
 
         const user = await User.findById(finalId);
+
+        // --- LOGIN FAILURE LOGGING ---
         if (!user) {
+            // Log failed attempt for non-existent user (id is null because user doesn't exist)
+            await AuditLog.record(null, `Failed Login: User ${finalId} not found`, req.ip);
             return res.status(401).json({ message: "Invalid ID or Password." });
         }
 
         if (user.status === 'deactivated') {
+            // Log failed attempt for deactivated user
+            await AuditLog.record(user.user_id, 'Failed Login: Account deactivated', req.ip);
             return res.status(403).json({ message: "Account deactivated." });
         }
 
         const isMatch = await bcrypt.compare(password, user.password_hash);
         if (!isMatch) {
+            // Log failed attempt for invalid password
+            await AuditLog.record(user.user_id, 'Failed Login: Invalid Password', req.ip);
             return res.status(401).json({ message: "Invalid ID or Password." });
         }
 

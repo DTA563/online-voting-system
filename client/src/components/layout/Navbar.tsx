@@ -111,6 +111,17 @@ export function Navbar() {
           </div>
 
           {/* --- Auth Buttons (Right Side) --- */}
+          {/* Mobile Get Started Button */}
+          <div className="md:hidden flex items-center">
+            {!isAuthenticated && (
+              <Link to="/login">
+                <Button className="bg-blue-600 hover:bg-blue-700 text-white border border-transparent backdrop-blur-sm !rounded-full text-sm px-6 h-10 font-bold shadow-[0_0_15px_rgba(59,130,246,0.5)] transition-all transform hover:scale-105">
+                  Get Started
+                </Button>
+              </Link>
+            )}
+          </div>
+
           <div className="hidden md:flex items-center">
             {isAuthenticated ? (
               <div className="flex items-center gap-4 pl-6 border-l border-white/10">
@@ -130,12 +141,12 @@ export function Navbar() {
             ) : (
               <div className="flex items-center gap-4">
                  <Link to="/login">
-                  <Button className="bg-white/5 hover:bg-white/10 text-white border border-white/10 backdrop-blur-sm rounded-xl">
+                  <Button className="bg-white/5 hover:bg-white/10 text-white border border-white/10 backdrop-blur-sm !rounded-full px-6 font-medium">
                     Sign In
                   </Button>
                 </Link>
                 <Link to="/register">
-                  <Button className="bg-blue-600 hover:bg-blue-500 text-white shadow-[0_0_15px_rgba(37,99,235,0.5)] border border-blue-400/30 rounded-xl">
+                  <Button className="bg-blue-600 hover:bg-blue-500 text-white shadow-[0_0_15px_rgba(37,99,235,0.5)] border border-blue-400/30 !rounded-full px-6 font-bold">
                     Register
                   </Button>
                 </Link>

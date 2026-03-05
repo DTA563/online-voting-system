@@ -26,10 +26,11 @@ class AuditLog {
      * Retrieve logs (For Super Admin Dashboard)
      */
     static async getAll() {
+        // Use LEFT JOIN so we don't exclude failed logins where performed_by is NULL
         const [rows] = await db.query(
             `SELECT a.*, u.full_name, u.role 
              FROM audit_logs a 
-             JOIN users u ON a.performed_by = u.user_id 
+             LEFT JOIN users u ON a.performed_by = u.user_id 
              ORDER BY a.created_at DESC`
         );
         return rows;

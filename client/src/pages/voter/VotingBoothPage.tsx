@@ -32,8 +32,20 @@ export function VotingBoothPage() {
   const [mounted, setMounted] = useState(false);
   const [showEmptyState, setShowEmptyState] = useState(false);
   const [emptyStateMounted, setEmptyStateMounted] = useState(false);
+  const [votedViewMounted, setVotedViewMounted] = useState(false);
 
   const navigate = useNavigate();
+
+  useEffect(() => {
+    if (hasVoted && !isLoading) {
+       // Reset first to ensure animation plays if state changes quickly
+       setVotedViewMounted(false);
+       const timer = setTimeout(() => setVotedViewMounted(true), 100);
+       return () => clearTimeout(timer);
+    } else {
+       setVotedViewMounted(false);
+    }
+  }, [hasVoted, isLoading]);
 
   useEffect(() => {
     loadEligibleElections();
@@ -100,6 +112,7 @@ export function VotingBoothPage() {
   };
 
   const handleSelectElection = async (election: Election, userHasVoted: boolean) => {
+    window.scrollTo({ top: 0, behavior: 'smooth' });
     setIsLoading(true);
     setSelectedElection(election);
     setHasVoted(userHasVoted);
@@ -293,41 +306,64 @@ export function VotingBoothPage() {
     return (
       <>
         {globalStyles}
-        <div className="max-w-4xl mx-auto p-6 lg:p-10 space-y-8 mt-6">
-          <div className={`space-y-4 mb-8 opacity-0 ${mounted ? 'animate-enter' : ''}`}>
-            <h1 className="text-3xl md:text-4xl font-extrabold tracking-tight text-primary">Select Election</h1>
-            <p className="text-secondary">Choose an active election to proceed to your secure ballot.</p>
+        <div className="max-w-6xl mx-auto p-6 space-y-8 mt-6">
+          <div className={`space-y-2 mb-8 opacity-0 ${mounted ? 'animate-enter' : ''}`}>
+             <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-accent-primary/10 border border-accent-primary/20 text-accent text-[10px] uppercase tracking-widest font-bold mb-2">
+                <span className="w-1.5 h-1.5 rounded-full bg-accent animate-pulse"></span>
+                Action Required
+             </div>
+            <h1 className="text-3xl font-extrabold tracking-tight text-primary">Select Election</h1>
+            <p className="text-secondary max-w-2xl">You are eligible to vote in multiple active elections. Choose one to begin your ballot.</p>
           </div>
 
-          <div className="flex flex-col gap-3">
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
             {eligibleElections.map((election, index) => {
               const alreadyVoted = votedElectionIds.includes(election.election_id);
               return (
                 <button
                   key={election.election_id}
                   onClick={() => handleSelectElection(election, alreadyVoted)}
-                  className={`opacity-0 ${mounted ? 'animate-enter' : ''} text-left flex items-center justify-between p-5 rounded-2xl border transition-all duration-300 group ${
+                  className={`relative overflow-hidden opacity-0 ${mounted ? 'animate-enter' : ''} text-left flex flex-col justify-between p-6 rounded-3xl border transition-all duration-300 group h-full ${
                     alreadyVoted 
-                      ? 'bg-card-hover border-border hover:bg-card-hover' 
-                      : 'bg-card border-border hover:border-accent-primary/50 hover:bg-accent-primary/5'
+                      ? 'bg-card/50 border-border opacity-75 hover:opacity-100 hover:bg-card' 
+                      : 'bg-card border-border hover:border-accent-primary/50 hover:shadow-[0_0_30px_rgba(6,182,212,0.15)] hover:-translate-y-1'
                   }`}
                   style={{ animationDelay: `${(index + 1) * 100}ms` }}
                 >
-                  <div className="flex items-center gap-5">
-                    <div className={`w-12 h-12 rounded-full flex items-center justify-center ${alreadyVoted ? 'bg-card-hover' : 'bg-accent-secondary/10 text-accent-secondary'}`}>
-                      {alreadyVoted ? <Icons.Check /> : <div className="w-4 h-4 rounded-full bg-accent-secondary animate-pulse"></div>}
+                  {/* Decorative Gradient Background on Hover (for active) */}
+                  {!alreadyVoted && (
+                    <div className="absolute inset-0 bg-gradient-to-br from-accent-primary/5 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-500" />
+                  )}
+
+                  <div className="relative z-10 w-full mb-6">
+                    <div className="flex items-start justify-between mb-4">
+                       <div className={`w-12 h-12 rounded-2xl flex items-center justify-center transition-colors ${alreadyVoted ? 'bg-accent-success/10 text-accent-success' : 'bg-accent-primary/10 text-accent-primary group-hover:bg-accent-primary group-hover:text-white'}`}>
+                          {alreadyVoted ? <Icons.Check className="w-6 h-6" /> : <svg className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2" /></svg>}
+                       </div>
+                       {alreadyVoted ? (
+                           <span className="px-3 py-1 rounded-full bg-accent-success/10 text-accent-success text-xs font-bold border border-accent-success/20">
+                             VOTED
+                           </span>
+                       ) : (
+                           <span className="px-3 py-1 rounded-full bg-accent-primary/10 text-accent-primary text-xs font-bold border border-accent-primary/20 group-hover:bg-accent-primary group-hover:text-white transition-colors">
+                             OPEN
+                           </span>
+                       )}
                     </div>
-                    <div>
-                      <div className="flex items-center gap-3">
-                        <h3 className="text-lg font-bold text-primary group-hover:text-accent transition-colors">{election.title}</h3>
-                        {alreadyVoted && (
-                          <span className="px-2 py-0.5 rounded-md bg-accent-success/20 text-accent-success text-[10px] font-bold uppercase tracking-wider">Voted</span>
-                        )}
-                      </div>
-                      <p className="text-sm text-tertiary mt-0.5">Closes on {new Date(election.end_date).toLocaleDateString()}</p>
+                    
+                    <h3 className="text-xl font-bold text-primary group-hover:text-accent-primary transition-colors line-clamp-2 mb-2">{election.title}</h3>
+                    <div className="flex items-center gap-2 text-sm text-tertiary">
+                         <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
+                         <p>Closes {new Date(election.end_date).toLocaleDateString()}</p>
                     </div>
                   </div>
-                  <Icons.ChevronRight className={alreadyVoted ? 'icon-secondary' : 'icon-secondary group-hover:text-accent'} />
+
+                  <div className="relative z-10 w-full pt-4 border-t border-border/50 flex items-center justify-between group-hover:border-accent-primary/20 transition-colors">
+                    <span className={`text-sm font-medium transition-colors ${alreadyVoted ? 'text-accent-success' : 'text-accent-primary'}`}>
+                        {alreadyVoted ? 'Ballot Submitted' : 'Vote Now'}
+                    </span>
+                    <Icons.ChevronRight className={`w-5 h-5 transition-transform duration-300 ${alreadyVoted ? 'text-accent-success/50' : 'text-accent-primary group-hover:translate-x-1'}`} />
+                  </div>
                 </button>
               )
             })}
@@ -343,8 +379,8 @@ export function VotingBoothPage() {
       <>
         {globalStyles}
         <div className="flex-1 flex items-center justify-center p-6 min-h-[80vh]">
-          <div className={`w-full max-w-md transform transition-all duration-700 ease-out ${mounted ? 'translate-y-0 opacity-100 scale-100' : 'translate-y-8 opacity-0 scale-95'}`}>
-            <div className="bg-card border border-border rounded-3xl p-8 md:p-12 text-center shadow-2xl relative overflow-hidden">
+          <div className="w-full max-w-md">
+            <div className={`bg-card border border-border rounded-3xl p-8 md:p-12 text-center shadow-2xl relative overflow-hidden transform transition-all duration-700 ease-out ${votedViewMounted ? 'translate-y-0 opacity-100 scale-100' : 'translate-y-8 opacity-0 scale-95'}`}>
               <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-accent-success to-teal-500"></div>
               {eligibleElections.length > 1 && (
                 <button onClick={() => setSelectedElection(null)} className="absolute top-6 left-6 text-sm text-tertiary hover:text-primary transition-colors">
@@ -358,12 +394,13 @@ export function VotingBoothPage() {
               </div>
               <h2 className="text-2xl font-extrabold mb-2 text-primary">Vote Recorded</h2>
               <p className="mb-2 text-sm text-accent font-medium">{selectedElection?.title}</p>
-              <p className="mb-8 text-sm text-secondary">Your ballot has been securely encrypted and submitted. You cannot modify your vote once cast.</p>
-              <Link to="/results">
-                <button className="w-full py-3.5 rounded-xl font-bold text-sm bg-gradient-to-r from-accent-secondary to-accent-primary text-white transition-all hover:scale-[1.02] active:scale-[0.98] shadow-lg shadow-accent-primary/20">
-                  View Election Results
-                </button>
-              </Link>
+              <p className="mb-6 text-sm text-secondary">Your ballot has been securely encrypted and submitted. You cannot modify your vote once cast.</p>
+              
+              <div className="bg-card-hover/50 p-4 rounded-xl border border-border/50">
+                  <p className="text-xs text-secondary">
+                    Please check the results page after the election has concluded to view the final outcome.
+                  </p>
+              </div>
             </div>
           </div>
         </div>
