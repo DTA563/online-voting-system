@@ -42,7 +42,7 @@ exports.checkVoterStatus = async (req, res) => {
  */
 exports.castVote = async (req, res) => {
     try {
-        // FIX 3: Extracted election_id (snake_case) to match frontend payload
+        // Extracted election_id (snake_case) to match frontend payload
         const { election_id, votes } = req.body;
         const userId = req.user.id;
 
