@@ -9,7 +9,7 @@ const voterMiddleware = require('../middleware/voterMiddleware');
 router.post('/cast', authMiddleware, voterMiddleware, voteController.castVote);
 
 // FIXED: Added authMiddleware and voterMiddleware to prevent the "req.user is undefined" crash
-router.get('/status/:electionId', authMiddleware, voterMiddleware, voteController.checkVoterStatus);
+router.get('/status/:electionId', authMiddleware, voteController.checkVoterStatus);
 
 // Protected route for getting election results
 router.get('/turnout/:electionId', authMiddleware, resultController.getElectionResults);

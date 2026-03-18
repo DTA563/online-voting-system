@@ -1,55 +1,87 @@
-const Result = require('../models/Result');
+const Result = require('../models/result');
 const db = require('../config/db');
 
 /**
  * getElectionResults
- * Aligned with frontend votes.api.ts expectations
+ * Groups flat SQL rows into the [ { position_title, candidates: [] } ] format
  */
 exports.getElectionResults = async (req, res) => {
     try {
         const { electionId } = req.params;
 
         if (!electionId || electionId === 'undefined') {
-            return res.json({ 
-                status: "success", 
-                data: { total: 0, voted: 0, percentage: 0 } 
-            });
+            return res.json({ status: "success", data: { total: 0, voted: 0, percentage: 0, results: [] } });
         }
 
+        // 1. Fetch Election Info
         const [elections] = await db.query('SELECT * FROM elections WHERE election_id = ?', [electionId]);
         const election = elections[0];
-        
         if (!election) return res.status(404).json({ message: "Election not found" });
 
+        // 2. Fetch Turnout
         const stats = await Result.getTurnoutStats(electionId);
         
-        // FORMATTING: Using keys 'total', 'voted', 'percentage' to match frontend
-        const turnoutData = {
-            total: stats.total_eligible || 0,
-            voted: stats.total_voted || 0,
-            percentage: stats.total_eligible > 0 
-                ? parseFloat(((stats.total_voted / stats.total_eligible) * 100).toFixed(2)) 
-                : 0
-        };
-
-        // If admin, we also attach the candidate results
+        // 3. Authorization & Timing Gate
         const isAdmin = req.user && (req.user.role === 'admin' || req.user.role === 'super_admin');
-        let results = [];
-        if (isAdmin || new Date() > new Date(election.end_date)) {
-            results = await Result.getTallyByElection(electionId);
+        const isEnded = new Date() > new Date(election.end_date);
+        
+        let flatResults = [];
+        // Only fetch candidate tallies if the election is over OR user is an admin
+        if (isAdmin || isEnded) {
+            flatResults = await Result.getTallyByElection(electionId);
         }
 
+        // 4. TRANSFORM: The "Grouper" Logic
+        // This converts rows into the structure VoterResultsPage.tsx needs
+        const groupedMap = {};
+        
+        flatResults.forEach(row => {
+            if (!groupedMap[row.position_id]) {
+                groupedMap[row.position_id] = {
+                    position_id: row.position_id,
+                    position_title: row.position_title,
+                    total_votes: 0,
+                    candidates: []
+                };
+            }
+            
+            groupedMap[row.position_id].total_votes += row.vote_count;
+            groupedMap[row.position_id].candidates.push({
+                candidate_id: row.candidate_id,
+                candidate_name: row.candidate_name,
+                photo_url: row.photo_url,
+                vote_count: row.vote_count,
+                percentage: 0 // Will calculate in next step
+            });
+        });
+
+        // 5. Calculate percentages per position
+        const structuredResults = Object.values(groupedMap).map(pos => {
+            pos.candidates = pos.candidates.map(cand => ({
+                ...cand,
+                percentage: pos.total_votes > 0 
+                    ? parseFloat(((cand.vote_count / pos.total_votes) * 100).toFixed(1)) 
+                    : 0
+            }));
+            return pos;
+        });
+
+        // 6. Final unified response
         res.json({ 
             status: "success", 
             data: { 
-                ...turnoutData, 
                 electionTitle: election.title,
-                results: results 
+                total: stats.total_eligible || 0,
+                voted: stats.total_voted || 0,
+                percentage: stats.total_eligible > 0 
+                    ? parseFloat(((stats.total_voted / stats.total_eligible) * 100).toFixed(2)) 
+                    : 0,
+                results: structuredResults 
             } 
         });
 
     } catch (err) {
-        console.error("Result Error:", err.message);
-        res.status(500).json({ message: "Error fetching results" });
+        console.error("❌ Results Logic Error:", err.message);
+        res.status(500).json({ message: "Internal server error calculating results." });
     }
 };

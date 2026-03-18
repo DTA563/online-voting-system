@@ -1,13 +1,18 @@
 const db = require('../config/db');
 
 class Result {
-    // 1. Tally votes for a specific election, grouped by position and candidate
+    /**
+     * getTallyByElection
+     * Updated: Now includes position_id for more accurate grouping.
+     */
     static async getTallyByElection(electionId) {
         const query = `
             SELECT 
+                p.position_id,
                 p.title AS position_title,
                 c.full_name AS candidate_name,
                 c.candidate_id,
+                c.photo_url,
                 COUNT(v.vote_id) AS vote_count
             FROM positions p
             JOIN candidates c ON p.position_id = c.position_id
@@ -20,7 +25,9 @@ class Result {
         return rows;
     }
 
-    // 2. Get Voter Turnout Statistics
+    /**
+     * getTurnoutStats
+     */
     static async getTurnoutStats(electionId) {
         const query = `
             SELECT 
@@ -28,7 +35,7 @@ class Result {
                 (SELECT COUNT(*) FROM voter_status WHERE election_id = ? AND has_voted = true) AS total_voted
         `;
         const [rows] = await db.query(query, [electionId, electionId]);
-        return rows[0];
+        return rows[0] || { total_eligible: 0, total_voted: 0 };
     }
 }
 
