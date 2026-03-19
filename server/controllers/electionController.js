@@ -39,17 +39,28 @@ exports.getAllElections = async (req, res) => {
     try {
         const userId = req.user.id;
         const userRole = req.user.role;
+        const now = new Date();
 
         // 1. ADMIN / SUPER ADMIN VIEW
         if (userRole === 'admin' || userRole === 'super_admin') {
             const allElections = await Election.getAll();
+            const enrichedAdminElections = allElections.map(election => {
+                const startDate = new Date(election.start_date);
+                const endDate = new Date(election.end_date);
+                let status = "active";
+                if (now < startDate) {
+                    status = "upcoming";
+                } else if (now > endDate) {
+                    status = "completed";
+                }
+                return { ...election, status };
+            });
             // WRAP IN DATA OBJECT: This fixes the "No elections found" error
-            return res.json({ status: "success", data: allElections });
+            return res.json({ status: "success", data: enrichedAdminElections });
         }
 
         // 2. VOTER VIEW
         const elections = await Election.getAllWithUserStatus(userId);
-        const now = new Date();
 
         const enrichedElections = elections.map(election => {
             const startDate = new Date(election.start_date);
@@ -58,21 +69,21 @@ exports.getAllElections = async (req, res) => {
             let status = "active";
             let canVote = true;
 
-            if (election.is_registered === 0) {
-                status = "ineligible";
-                canVote = false;
-            } else if (now < startDate) {
+            // Determine correct global status ('upcoming', 'active', 'completed')
+            if (now < startDate) {
                 status = "upcoming";
                 canVote = false;
             } else if (now > endDate) {
-                status = "ended";
-                canVote = false;
-            } else if (election.user_has_voted) {
                 status = "completed";
                 canVote = false;
             }
 
-            return { ...election, current_status: status, can_vote: canVote };
+            // Determine user-specific voting eligibility
+            if (election.is_registered === 0 || election.user_has_voted) {
+                canVote = false;
+            }
+
+            return { ...election, status, can_vote: canVote };
         });
 
         res.json({ status: "success", data: enrichedElections });

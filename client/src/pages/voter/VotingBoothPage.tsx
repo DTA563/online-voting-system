@@ -1,6 +1,5 @@
 import { useState, useEffect } from 'react';
-import { useNavigate, Link } from 'react-router-dom';
-import { electionsApi, votesApi } from '../../api';
+import { useNavigate, Link } from 'react-router-dom';import { io } from 'socket.io-client';import { electionsApi, votesApi } from '../../api';
 import { Election, Position, Candidate, VoteSubmission } from '../../types';
 
 const SERVER_URL = (import.meta.env.VITE_API_URL || 'http://localhost:5001/api').replace('/api', '');
@@ -24,6 +23,7 @@ export function VotingBoothPage() {
   const [positions, setPositions] = useState<Position[]>([]);
   const [candidatesByPosition, setCandidatesByPosition] = useState<Record<number, Candidate[]>>({});
   const [selectedCandidates, setSelectedCandidates] = useState<Record<number, number>>({});
+  const [turnouts, setTurnouts] = useState<Record<number, { total: number; voted: number; percentage: number }>>({});
   
   const [hasVoted, setHasVoted] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
@@ -50,7 +50,22 @@ export function VotingBoothPage() {
   useEffect(() => {
     loadEligibleElections();
     const timer = setTimeout(() => setMounted(true), 50);
-    return () => clearTimeout(timer);
+    
+    // Set up socket listener for live turnout updates
+    const socket = io(SERVER_URL);
+    socket.on('turnout_update', async (data: { election_id: number }) => {
+      try {
+        const newTurnout = await votesApi.getTurnout(data.election_id);
+        setTurnouts(prev => ({ ...prev, [data.election_id]: newTurnout }));
+      } catch (err) {
+        console.error('Failed to fetch updated turnout', err);
+      }
+    });
+
+    return () => {
+      clearTimeout(timer);
+      socket.disconnect();
+    };
   }, []);
 
   useEffect(() => {
@@ -83,6 +98,7 @@ export function VotingBoothPage() {
 
       const eligible: Election[] = [];
       const votedIds: number[] = [];
+      const turnoutsMap: Record<number, { total: number; voted: number; percentage: number }> = {};
 
       for (const election of activeElections) {
         try {
@@ -91,6 +107,9 @@ export function VotingBoothPage() {
           if (status.has_voted) {
             votedIds.push(election.election_id);
           }
+          // Fetch initial turnout
+          const turnout = await votesApi.getTurnout(election.election_id);
+          turnoutsMap[election.election_id] = turnout;
         } catch (err) {
           console.log(`User not eligible for election ID: ${election.election_id}`);
         }
@@ -98,6 +117,7 @@ export function VotingBoothPage() {
 
       setEligibleElections(eligible);
       setVotedElectionIds(votedIds);
+      setTurnouts(turnoutsMap);
 
       if (eligible.length === 1) {
         await handleSelectElection(eligible[0], votedIds.includes(eligible[0].election_id));
@@ -345,13 +365,22 @@ export function VotingBoothPage() {
                              VOTED
                            </span>
                        ) : (
-                           <span className="px-3 py-1 rounded-full bg-accent-primary/10 text-accent-primary text-xs font-bold border border-accent-primary/20 group-hover:bg-accent-primary group-hover:text-white transition-colors">
-                             OPEN
+                           <span className="px-3 py-1 rounded-full bg-accent-primary/10 text-accent-primary text-xs font-bold border border-accent-primary/20 group-hover:bg-accent-primary group-hover:text-white transition-colors flex items-center gap-1.5">
+                             <div className="w-1.5 h-1.5 bg-accent-primary group-hover:bg-white rounded-full animate-pulse"></div> OPEN
                            </span>
                        )}
                     </div>
                     
                     <h3 className="text-xl font-bold text-primary group-hover:text-accent-primary transition-colors line-clamp-2 mb-2">{election.title}</h3>
+                    
+                    {/* Live Turnout Display */}
+                    {turnouts[election.election_id] && (
+                      <div className="mb-3 px-3 py-2 bg-card-hover rounded-xl border border-border flex items-center justify-between">
+                        <span className="text-xs text-secondary font-medium uppercase tracking-wider">Live Turnout</span>
+                        <span className="text-sm font-bold text-primary">{turnouts[election.election_id].percentage}%</span>
+                      </div>
+                    )}
+
                     <div className="flex items-center gap-2 text-sm text-tertiary">
                          <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
                          <p>Closes {new Date(election.end_date).toLocaleDateString()}</p>
@@ -426,10 +455,17 @@ export function VotingBoothPage() {
             <div className="bg-card border border-border rounded-3xl p-6 md:p-8 flex flex-col md:flex-row md:items-center justify-between gap-6 shadow-2xl relative overflow-hidden">
               <div className="absolute top-0 right-0 w-64 h-64 bg-accent-secondary/10 rounded-full blur-[80px] pointer-events-none"></div>
               
-              <div className="relative z-10">
-                <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-accent-primary/10 border border-accent-primary/20 text-accent text-[10px] uppercase tracking-widest font-bold mb-3">
-                  <span className="w-1.5 h-1.5 rounded-full bg-accent animate-pulse"></span>
-                  Official Ballot
+              <div className="relative z-10 w-full md:w-auto">
+                <div className="flex gap-2 mb-3">
+                  <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-accent-primary/10 border border-accent-primary/20 text-accent text-[10px] uppercase tracking-widest font-bold">
+                    <span className="w-1.5 h-1.5 rounded-full bg-accent animate-pulse"></span>
+                    Official Ballot
+                  </div>
+                  {selectedElection && turnouts[selectedElection.election_id] && (
+                    <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-card-hover border border-border text-secondary text-[10px] uppercase tracking-widest font-bold">
+                      Live Turnout: <span className="text-primary">{turnouts[selectedElection.election_id].percentage}%</span>
+                    </div>
+                  )}
                 </div>
                 <h1 className="text-2xl md:text-4xl font-extrabold tracking-tight text-primary">
                   {selectedElection?.title}

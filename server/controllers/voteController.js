@@ -69,6 +69,12 @@ exports.castVote = async (req, res) => {
         // 4. Record Multi-Position Ballot
         await Vote.castBallot(userId, election_id, votes, timeBucket);
 
+        // 5. Emit Socket Event for Real-Time Turnout Updates
+        const io = req.app.get('io');
+        if (io) {
+            io.emit('turnout_update', { election_id });
+        }
+
         res.json({ status: "success", data: { message: "Ballot cast successfully." } });
 
     } catch (err) {

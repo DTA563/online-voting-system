@@ -33,6 +33,15 @@ export function AccountOversightPage() {
   const [mounted, setMounted] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
+  // Modal State
+  const [modalConfig, setModalConfig] = useState<{
+    isOpen: boolean;
+    title: string;
+    message: string;
+    onConfirm: () => void;
+    actionType: 'danger' | 'warning' | 'info';
+  } | null>(null);
+
   useEffect(() => {
     loadUsers();
     const timer = setTimeout(() => setMounted(true), 100);
@@ -68,30 +77,45 @@ export function AccountOversightPage() {
       return;
     }
     
-    if (!window.confirm(`Are you sure you want to ${action} ${user.full_name}?`)) return;
-    
-    setActionLoading(user.user_id);
-    setError(null);
-    
-    try {
-      if (action === 'reset') {
-        const res = await adminApi.resetPassword(user.user_id);
-        alert(res.message);
-      } else {
-        const newStatus = action === 'activate' ? 'active' : 'deactivated';
-        await adminApi.manageUser({ 
-          targetUserId: user.user_id, 
-          newStatus: newStatus 
-        });
-        setUsers(prev => prev.map(u => u.user_id === user.user_id ? { ...u, status: newStatus } : u));
+    setModalConfig({
+      isOpen: true,
+      title: `Confirm Action`,
+      message: `Are you sure you want to ${action} ${user.full_name}?`,
+      actionType: action === 'deactivate' ? 'danger' : 'warning',
+      onConfirm: async () => {
+        setModalConfig(null);
+        setActionLoading(user.user_id!);
+        setError(null);
+        
+        try {
+          if (action === 'reset') {
+            const res = await adminApi.resetPassword(user.user_id!);
+            setTimeout(() => {
+              setModalConfig({
+                isOpen: true,
+                title: 'Password Reset Successful',
+                message: res.message,
+                actionType: 'info',
+                onConfirm: () => setModalConfig(null)
+              });
+            }, 100);
+          } else {
+            const newStatus = action === 'activate' ? 'active' : 'deactivated';
+            await adminApi.manageUser({ 
+              targetUserId: user.user_id!, 
+              newStatus: newStatus 
+            });
+            setUsers(prev => prev.map(u => u.user_id === user.user_id ? { ...u, status: newStatus } : u));
+          }
+        } catch (err: any) {
+          const errorMsg = err.response?.data?.message || `Failed to ${action} user`;
+          setError(errorMsg);
+          alert(errorMsg);
+        } finally {
+          setActionLoading(null);
+        }
       }
-    } catch (err: any) {
-      const errorMsg = err.response?.data?.message || `Failed to ${action} user`;
-      setError(errorMsg);
-      alert(errorMsg);
-    } finally {
-      setActionLoading(null);
-    }
+    });
   };
 
   const handleRoleChange = async (user: User, direction: 'promote' | 'demote') => {
@@ -113,24 +137,32 @@ export function AccountOversightPage() {
     if (newRole === user.role) return;
 
     const roleDisplay = newRole.replace('_', ' ');
-    if (!window.confirm(`Are you sure you want to ${direction} ${user.full_name} to ${roleDisplay}?`)) return;
     
-    setActionLoading(user.user_id);
-    setError(null);
-    
-    try {
-      await adminApi.updateRole({ 
-        targetUserId: user.user_id, 
-        newRole: newRole
-      });
-      setUsers(prev => prev.map(u => u.user_id === user.user_id ? { ...u, role: newRole } : u));
-    } catch (err: any) {
-      const errorMsg = err.response?.data?.message || `Failed to ${direction} user role`;
-      setError(errorMsg);
-      alert(errorMsg);
-    } finally {
-      setActionLoading(null);
-    }
+    setModalConfig({
+      isOpen: true,
+      title: `Confirm Role Change`,
+      message: `Are you sure you want to ${direction} ${user.full_name} to ${roleDisplay}?`,
+      actionType: direction === 'demote' ? 'danger' : 'info',
+      onConfirm: async () => {
+        setModalConfig(null);
+        setActionLoading(user.user_id!);
+        setError(null);
+        
+        try {
+          await adminApi.updateRole({ 
+            targetUserId: user.user_id!, 
+            newRole: newRole
+          });
+          setUsers(prev => prev.map(u => u.user_id === user.user_id ? { ...u, role: newRole } : u));
+        } catch (err: any) {
+          const errorMsg = err.response?.data?.message || `Failed to ${direction} user role`;
+          setError(errorMsg);
+          alert(errorMsg);
+        } finally {
+          setActionLoading(null);
+        }
+      }
+    });
   };
 
   const filteredUsers = useMemo(() => {
@@ -618,6 +650,41 @@ export function AccountOversightPage() {
           </div>
         </div>
       </div>
+
+      {modalConfig && modalConfig.isOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4">
+          <div className="bg-zinc-900 border border-white/10 rounded-2xl p-6 max-w-sm w-full shadow-2xl animate-fade-up">
+            <h3 className={`text-lg font-bold mb-2 flex items-center gap-2 ${
+              modalConfig.actionType === 'danger' ? 'text-rose-500' :
+              modalConfig.actionType === 'warning' ? 'text-amber-500' : 'text-blue-500'
+            }`}>
+              {modalConfig.actionType === 'danger' && <Icons.Ban />}
+              {modalConfig.title}
+            </h3>
+            <p className="text-zinc-300 text-sm mb-6">{modalConfig.message}</p>
+            <div className="flex justify-end gap-3">
+              {modalConfig.actionType !== 'info' && (
+                <button 
+                  onClick={() => setModalConfig(null)}
+                  className="px-4 py-2 rounded-lg text-sm font-medium bg-zinc-800 text-zinc-300 hover:bg-zinc-700 transition-colors"
+                >
+                  Cancel
+                </button>
+              )}
+              <button 
+                onClick={modalConfig.onConfirm}
+                className={`px-4 py-2 rounded-lg text-sm font-bold transition-colors ${
+                  modalConfig.actionType === 'danger' ? 'bg-rose-500/20 text-rose-500 hover:bg-rose-500/30' :
+                  modalConfig.actionType === 'warning' ? 'bg-amber-500/20 text-amber-500 hover:bg-amber-500/30' : 
+                  'bg-blue-500/20 text-blue-500 hover:bg-blue-500/30'
+                }`}
+              >
+                {modalConfig.actionType === 'info' ? 'Close' : 'Confirm'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </>
   );
 }

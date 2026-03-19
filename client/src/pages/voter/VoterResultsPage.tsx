@@ -196,23 +196,48 @@ export function VoterResultsPage() {
               <div className="space-y-8">
 
                 {/* Seamless Election Selector */}
-                <div className="flex flex-wrap gap-3 pb-2">
-                  {completedElections.map(election => {
-                    const isSelected = selectedElection?.election_id === election.election_id;
-                    return (
-                      <button
-                        key={election.election_id}
-                        onClick={() => handleSelectElection(election)}
-                        className={`px-5 py-2.5 rounded-full text-sm font-semibold transition-all duration-300 border ${
-                          isSelected 
-                            ? 'bg-accent-primary/10 text-accent border-accent-primary/50 shadow-[0_0_15px_rgba(6,182,212,0.15)]' 
-                            : 'bg-card text-secondary border-border hover:border-border-medium hover:text-primary'
-                        }`}
-                      >
-                        {election.title}
-                      </button>
-                    );
-                  })}
+                <div className="pb-2">
+                  {/* Mobile Dropdown */}
+                  <div className="block md:hidden mb-4 relative">
+                    <select
+                      className="w-full bg-card border border-border p-3.5 pr-10 rounded-2xl text-primary font-semibold text-sm focus:outline-none focus:border-accent-primary focus:ring-1 focus:ring-accent-primary appearance-none cursor-pointer"
+                      value={selectedElection?.election_id || ''}
+                      onChange={(e) => {
+                        const selected = completedElections.find(el => el.election_id === Number(e.target.value));
+                        if (selected) handleSelectElection(selected);
+                      }}
+                    >
+                      <option value="" disabled>Select an Election</option>
+                      {completedElections.map(election => (
+                        <option key={election.election_id} value={election.election_id}>
+                          {election.title}
+                        </option>
+                      ))}
+                    </select>
+                    <div className="absolute inset-y-0 right-0 flex items-center px-4 pointer-events-none text-secondary">
+                      <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 9l-7 7-7-7" /></svg>
+                    </div>
+                  </div>
+
+                  {/* Desktop Pills */}
+                  <div className="hidden md:flex flex-wrap gap-3">
+                    {completedElections.map(election => {
+                      const isSelected = selectedElection?.election_id === election.election_id;
+                      return (
+                        <button
+                          key={election.election_id}
+                          onClick={() => handleSelectElection(election)}
+                          className={`px-5 py-2.5 rounded-full text-sm font-semibold transition-all duration-300 border ${
+                            isSelected 
+                              ? 'bg-accent-primary/10 text-accent border-accent-primary/50 shadow-[0_0_15px_rgba(6,182,212,0.15)]' 
+                              : 'bg-card text-secondary border-border hover:border-border-medium hover:text-primary'
+                          }`}
+                        >
+                          {election.title}
+                        </button>
+                      );
+                    })}
+                  </div>
                 </div>
 
                 {/* Selected Election Content */}
