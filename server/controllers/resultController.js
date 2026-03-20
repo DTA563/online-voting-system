@@ -1,10 +1,6 @@
 const Result = require('../models/result');
 const db = require('../config/db');
 
-/**
- * getElectionResults
- * Groups flat SQL rows into the [ { position_title, candidates: [] } ] format
- */
 exports.getElectionResults = async (req, res) => {
     try {
         const { electionId } = req.params;
@@ -12,7 +8,7 @@ exports.getElectionResults = async (req, res) => {
         if (!electionId || electionId === 'undefined') {
             return res.json({ status: "success", data: { total: 0, voted: 0, percentage: 0, results: [] } });
         }
-
+ 
         // 1. Fetch Election Info
         const [elections] = await db.query('SELECT * FROM elections WHERE election_id = ?', [electionId]);
         const election = elections[0];
@@ -26,13 +22,11 @@ exports.getElectionResults = async (req, res) => {
         const isEnded = new Date() > new Date(election.end_date);
         
         let flatResults = [];
-        // Only fetch candidate tallies if the election is over OR user is an admin
         if (isAdmin || isEnded) {
             flatResults = await Result.getTallyByElection(electionId);
         }
 
         // 4. TRANSFORM: The "Grouper" Logic
-        // This converts rows into the structure VoterResultsPage.tsx needs
         const groupedMap = {};
         
         flatResults.forEach(row => {
@@ -51,18 +45,32 @@ exports.getElectionResults = async (req, res) => {
                 candidate_name: row.candidate_name,
                 photo_url: row.photo_url,
                 vote_count: row.vote_count,
-                percentage: 0 // Will calculate in next step
+                percentage: 0 
             });
         });
 
-        // 5. Calculate percentages per position
+        // 5. Calculate percentages and DETECT TIES
         const structuredResults = Object.values(groupedMap).map(pos => {
+            // Sort candidates highest to lowest first
+            pos.candidates.sort((a, b) => b.vote_count - a.vote_count);
+
             pos.candidates = pos.candidates.map(cand => ({
                 ...cand,
                 percentage: pos.total_votes > 0 
                     ? parseFloat(((cand.vote_count / pos.total_votes) * 100).toFixed(1)) 
                     : 0
             }));
+
+            // Tie logic implementation
+            pos.is_tie = false;
+            // Only check for a tie if votes exist and there are at least 2 candidates
+            if (pos.total_votes > 0 && pos.candidates.length >= 2) {
+                // Since it's sorted, if index 0 and index 1 have the same votes, it's a tie
+                if (pos.candidates[0].vote_count === pos.candidates[1].vote_count) {
+                    pos.is_tie = true;
+                }
+            }
+
             return pos;
         });
 
@@ -81,7 +89,7 @@ exports.getElectionResults = async (req, res) => {
         });
 
     } catch (err) {
-        console.error("❌ Results Logic Error:", err.message);
+        console.error("Results Logic Error:", err.message);
         res.status(500).json({ message: "Internal server error calculating results." });
     }
 };

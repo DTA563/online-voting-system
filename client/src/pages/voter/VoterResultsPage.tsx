@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react';
 import { electionsApi, votesApi } from '../../api';
 import { Election, PositionResult } from '../../types';
 
-// --- Polished Icons (Updated to accept props) ---
+// --- Polished Icons ---
 const Icons = {
   Trophy: (props: any) => <svg className={`w-4 h-4 ${props.className || ''}`} fill="none" viewBox="0 0 24 24" stroke="currentColor" {...props}><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 3v4M3 5h4M6 17v4m-2-2h4m5-16l2.286 6.857L21 12l-5.714 2.143L13 21l-2.286-6.857L5 12l5.714-2.143L13 3z" /></svg>,
   Chart: (props: any) => <svg className={`w-5 h-5 ${props.className || ''}`} fill="none" viewBox="0 0 24 24" stroke="currentColor" {...props}><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" /></svg>,
@@ -77,7 +77,6 @@ export function VoterResultsPage() {
   const completedElections = elections.filter(e => e.status === 'completed');
   const activeElections = elections.filter(e => e.status === 'active');
 
-  // --- Shared Animations ---
   const globalStyles = (
     <style>{`
       @keyframes slideUp { from { transform: translateY(20px); opacity: 0; } to { transform: translateY(0); opacity: 1; } }
@@ -91,7 +90,6 @@ export function VoterResultsPage() {
     `}</style>
   );
 
-  // --- Smooth Loading Skeleton (Dark Mode) ---
   if (isLoading) {
     return (
       <div className="font-sans animate-pulse max-w-4xl mx-auto p-4 md:p-8 space-y-8 mt-4">
@@ -130,7 +128,6 @@ export function VoterResultsPage() {
                 </p>
               </div>
 
-              {/* Updated: Results Available Counter */}
               <div className="relative z-10 bg-card-hover border border-border rounded-2xl p-4 flex items-center gap-4 text-center">
                 <div className="w-10 h-10 rounded-full bg-accent-primary/10 flex items-center justify-center text-accent shrink-0">
                   <Icons.Chart className="w-5 h-5" />
@@ -197,7 +194,6 @@ export function VoterResultsPage() {
 
                 {/* Seamless Election Selector */}
                 <div className="pb-2">
-                  {/* Mobile Dropdown */}
                   <div className="block md:hidden mb-4 relative">
                     <select
                       className="w-full bg-card border border-border p-3.5 pr-10 rounded-2xl text-primary font-semibold text-sm focus:outline-none focus:border-accent-primary focus:ring-1 focus:ring-accent-primary appearance-none cursor-pointer"
@@ -219,7 +215,6 @@ export function VoterResultsPage() {
                     </div>
                   </div>
 
-                  {/* Desktop Pills */}
                   <div className="hidden md:flex flex-wrap gap-3">
                     {completedElections.map(election => {
                       const isSelected = selectedElection?.election_id === election.election_id;
@@ -311,7 +306,6 @@ export function VoterResultsPage() {
                               {results.map((position) => (
                                 <div key={position.position_id} className="bg-card border border-border rounded-3xl overflow-hidden shadow-lg">
                                   
-                                  {/* Position Header */}
                                   <div className="px-6 py-5 flex justify-between items-center bg-card-hover border-b border-border">
                                     <h3 className="text-lg font-bold text-primary">{position.position_title}</h3>
                                     <span className="text-xs font-bold px-3 py-1 rounded-full bg-secondary border border-border text-secondary tracking-wider uppercase">
@@ -319,30 +313,34 @@ export function VoterResultsPage() {
                                     </span>
                                   </div>
 
-                                  {/* Candidates List */}
                                   <div className="p-4 sm:p-6 space-y-4">
                                     {position.candidates
+                                      // The backend already sorted this, but doing it again guarantees UI matches
                                       .sort((a, b) => b.vote_count - a.vote_count)
                                       .map((candidate, index) => {
-                                        const isWinner = index === 0 && position.total_votes > 0;
+                                        // UPDATED LOGIC: Account for is_tie
+                                        const isWinner = index === 0 && position.total_votes > 0 && !position.is_tie;
+                                        const isTied = position.is_tie && (index === 0 || index === 1) && position.total_votes > 0;
                                         
                                         return (
                                           <div key={candidate.candidate_id} className={`relative p-4 rounded-2xl border transition-all ${
-                                            isWinner ? 'bg-accent-warning/5 border-accent-warning/30 shadow-[0_0_20px_rgba(245,158,11,0.05)]' : 'bg-card-hover border-border'
+                                            isWinner ? 'bg-accent-warning/5 border-accent-warning/30 shadow-[0_0_20px_rgba(245,158,11,0.05)]' : 
+                                            isTied ? 'bg-blue-500/10 border-blue-500/30 shadow-[0_0_20px_rgba(59,130,246,0.05)]' :
+                                            'bg-card-hover border-border'
                                           }`}>
                                             <div className="flex justify-between items-center mb-4">
                                               
                                               <div className="flex items-center gap-4">
-                                                {/* Rank/Avatar Placeholder */}
                                                 <div className={`w-12 h-12 rounded-full flex items-center justify-center font-bold shrink-0 border-2 ${
-                                                  isWinner ? 'bg-accent-warning/20 text-accent-warning border-accent-warning shadow-lg shadow-accent-warning/20' : 'bg-card-hover text-tertiary border-border'
+                                                  isWinner ? 'bg-accent-warning/20 text-accent-warning border-accent-warning shadow-lg shadow-accent-warning/20' : 
+                                                  isTied ? 'bg-blue-500/20 text-blue-400 border-blue-500 shadow-lg shadow-blue-500/20' :
+                                                  'bg-card-hover text-tertiary border-border'
                                                 }`}>
-                                                  {isWinner ? <Icons.Trophy /> : <Icons.UserPlaceholder className="w-5 h-5" />}
+                                                  {isWinner || isTied ? <Icons.Trophy /> : <Icons.UserPlaceholder className="w-5 h-5" />}
                                                 </div>
                                                 
-                                                {/* Name & Status */}
                                                 <div>
-                                                  <div className={`font-bold text-base sm:text-lg leading-tight ${isWinner ? 'text-primary' : 'text-secondary'}`}>
+                                                  <div className={`font-bold text-base sm:text-lg leading-tight ${isWinner || isTied ? 'text-primary' : 'text-secondary'}`}>
                                                     {candidate.candidate_name}
                                                   </div>
                                                   {isWinner && (
@@ -350,10 +348,14 @@ export function VoterResultsPage() {
                                                       Elected Winner
                                                     </div>
                                                   )}
+                                                  {isTied && (
+                                                    <div className="text-[10px] font-bold text-blue-400 uppercase tracking-widest mt-1">
+                                                      Tied - Runoff Required
+                                                    </div>
+                                                  )}
                                                 </div>
                                               </div>
                                               
-                                              {/* Numbers */}
                                               <div className="text-right pl-4">
                                                 <div className="font-extrabold text-xl sm:text-2xl leading-none text-primary">
                                                   {candidate.percentage}%
@@ -364,11 +366,12 @@ export function VoterResultsPage() {
                                               </div>
                                             </div>
 
-                                            {/* Progress Bar */}
                                             <div className="h-1.5 rounded-full overflow-hidden w-full bg-secondary border border-border">
                                               <div
                                                 className={`h-full rounded-full transition-all duration-1000 ease-out ${
-                                                  isWinner ? 'bg-gradient-to-r from-accent-warning to-yellow-300' : 'bg-gradient-to-r from-accent-secondary to-accent-primary opacity-70'
+                                                  isWinner ? 'bg-gradient-to-r from-accent-warning to-yellow-300' : 
+                                                  isTied ? 'bg-gradient-to-r from-blue-600 to-blue-400' :
+                                                  'bg-gradient-to-r from-accent-secondary to-accent-primary opacity-70'
                                                 }`}
                                                 style={{ width: `${candidate.percentage}%` }}
                                               />

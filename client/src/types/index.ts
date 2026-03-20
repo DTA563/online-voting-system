@@ -74,6 +74,7 @@ export interface VoteResult {
 export interface PositionResult {
   position_id: number;
   position_title: string;
+  is_tie: boolean;
   candidates: {
     candidate_id: number;
     candidate_name: string;
