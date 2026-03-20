@@ -39,7 +39,7 @@ export function AccountOversightPage() {
     title: string;
     message: string;
     onConfirm: () => void;
-    actionType: 'danger' | 'warning' | 'info';
+    actionType: 'danger' | 'warning' | 'info' | 'primary';
   } | null>(null);
 
   useEffect(() => {
@@ -142,7 +142,7 @@ export function AccountOversightPage() {
       isOpen: true,
       title: `Confirm Role Change`,
       message: `Are you sure you want to ${direction} ${user.full_name} to ${roleDisplay}?`,
-      actionType: direction === 'demote' ? 'danger' : 'info',
+      actionType: direction === 'demote' ? 'danger' : 'primary',
       onConfirm: async () => {
         setModalConfig(null);
         setActionLoading(user.user_id!);
