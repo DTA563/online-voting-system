@@ -1,5 +1,7 @@
 import { useEffect } from 'react'; // ADDED: useEffect for the socket connection
 import { io } from 'socket.io-client'; // ADDED: Socket.io client
+import { Analytics } from "@vercel/analytics/next"
+import { SpeedInsights } from "@vercel/speed-insights/next"
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
 import { AuthProvider, useAuth } from './context';
 import { MainLayout, ProtectedRoute, SuperAdminLayout, AdminLayout, VoterLayout } from './components';
