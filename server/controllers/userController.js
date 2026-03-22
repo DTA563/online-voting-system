@@ -38,6 +38,40 @@ exports.verifyUser = async (req, res) => {
 };
 
 /**
+ * updateUserStatus
+ * Suspends or activates a user.
+ */
+exports.updateUserStatus = async (req, res) => {
+    try {
+        const { id } = req.params;
+        const { status } = req.body;
+
+        if (!['active', 'deactivated'].includes(status)) {
+            return res.status(400).json({ message: "Invalid status value provided." });
+        }
+
+        if (id === req.user.id) {
+            return res.status(400).json({ message: "Security Error: You cannot modify your own account status." });
+        }
+
+        await User.updateStatus(id, status);
+
+        if (status === 'deactivated') {
+            const io = req.app.get('io');
+            if (io) {
+                const stringId = String(id);
+                io.to(stringId).emit('force_logout', { message: "Your access has been revoked by an administrator." });
+            }
+        }
+
+        res.json({ status: 'success', message: `User status updated to ${status} successfully` });
+    } catch (err) {
+        console.error("Error updating user status:", err);
+        res.status(500).json({ message: "Failed to update user status" });
+    }
+};
+
+/**
  * deleteUser
  * Completely removes a user from the system.
  */
@@ -51,6 +85,15 @@ exports.deleteUser = async (req, res) => {
         }
 
         await User.delete(id);
+
+        // KICK OUT THE USER IF THEY ARE LOGGED IN
+        // Emit a socket event to the user's specific room
+        const io = req.app.get('io');
+        if (io) {
+            const stringId = String(id);
+            io.to(stringId).emit('force_logout', { message: "Your access has been revoked by an administrator." });
+        }
+
         res.json({ status: 'success', message: 'User deleted successfully' });
     } catch (err) {
         console.error("Error deleting user:", err);

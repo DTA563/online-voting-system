@@ -30,7 +30,7 @@ function AppRoutes() {
   useEffect(() => {
     // Only connect if the user is actually logged in
     if (isAuthenticated) {
-      const userData = localStorage.getItem('user');
+      const userData = sessionStorage.getItem('user');
       
       if (userData) {
         try {
@@ -40,8 +40,8 @@ function AppRoutes() {
           const socket = io('http://localhost:5001'); 
 
           // Tell the backend who we are to join our personal room
-          if (user && user.id) {
-             const stringId = String(user.id);
+          if (user && (user.id || user.user_id)) {
+             const stringId = String(user.id || user.user_id);
              console.log("🔌 Joining Socket Room:", stringId);
              socket.emit('register_user', stringId);
           }
@@ -49,8 +49,8 @@ function AppRoutes() {
           // Listen for the kick-out signal from the Super Admin
           socket.on('force_logout', (data) => {
             alert(data.message); // Show the reason
-            localStorage.removeItem('token'); // Destroy local session
-            localStorage.removeItem('user');
+            sessionStorage.removeItem('token'); // Destroy local session
+            sessionStorage.removeItem('user');
             window.location.href = '/login'; // Instantly redirect
           });
 

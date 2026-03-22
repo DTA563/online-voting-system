@@ -69,7 +69,7 @@ exports.login = async (req, res) => {
         if (user.status === 'deactivated') {
             // Log failed attempt for deactivated user
             await AuditLog.record(user.user_id, 'Failed Login: Account deactivated', req.ip);
-            return res.status(403).json({ message: "Account deactivated." });
+            return res.status(403).json({ message: "Account deactivated. Please contact an administrator." });
         }
 
         const isMatch = await bcrypt.compare(password, user.password_hash);

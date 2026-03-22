@@ -23,6 +23,7 @@ export function ManageVotersPage() {
   const [successMessage, setSuccessMessage] = useState('');
   const [searchTerm, setSearchTerm] = useState('');
   const [processingId, setProcessingId] = useState<string | null>(null);
+  const [userToRevoke, setUserToRevoke] = useState<string | null>(null);
 
   useEffect(() => {
     loadVoters();
@@ -42,43 +43,45 @@ export function ManageVotersPage() {
     }
   };
 
-  const handleVerify = async (id: string) => {
+  const executeRevoke = async () => {
+    if (!userToRevoke) return;
+    setProcessingId(userToRevoke);
+    try {
+      await api.patch(`/users/status/${userToRevoke}`, { status: 'deactivated' });
+      setSuccessMessage('Access revoked successfully');
+      await loadVoters();
+      setTimeout(() => setSuccessMessage(''), 3000);
+      setUserToRevoke(null);
+    } catch (err: any) {
+      setError(err.response?.data?.message || err.message || 'Failed to revoke user access');
+      console.error(err);
+      setUserToRevoke(null);
+    } finally {
+      setProcessingId(null);
+    }
+  };
+
+  const executeGrant = async (id: string) => {
     setProcessingId(id);
     try {
-      await api.patch(`/users/${id}`, { is_verified: true });
-      setSuccessMessage('Voter verified successfully');
+      await api.patch(`/users/status/${id}`, { status: 'active' });
+      setSuccessMessage('Access granted successfully');
       await loadVoters();
       setTimeout(() => setSuccessMessage(''), 3000);
     } catch (err: any) {
-      setError(err.response?.data?.message || err.message || 'Failed to verify voter');
+      setError(err.response?.data?.message || err.message || 'Failed to grant user access');
       console.error(err);
     } finally {
       setProcessingId(null);
     }
   };
 
-  const handleReject = async (id: string, isRevoke = false) => {
-    const action = isRevoke ? 'Revoke access for' : 'Reject registration of';
-    if (!confirm(`⚠️ Are you sure you want to ${action} this user? This cannot be undone.`)) return;
-
-    setProcessingId(id);
-    try {
-      await api.delete(`/users/${id}`);
-      setSuccessMessage(isRevoke ? 'Access revoked successfully' : 'Request rejected');
-      await loadVoters();
-      setTimeout(() => setSuccessMessage(''), 3000);
-    } catch (err: any) {
-      setError(err.response?.data?.message || err.message || 'Failed to remove user');
-      console.error(err);
-    } finally {
-      setProcessingId(null);
-    }
+  const handleReject = (id: string) => {
+    setUserToRevoke(id);
   };
 
   // --- Derived State ---
-  const pendingVoters = voters.filter(v => !v.is_verified);
-  const activeVoters = voters.filter(v => v.is_verified);
-  const filteredActiveVoters = activeVoters.filter(
+  const filteredVoters = voters.filter(
     (voter) =>
       voter.full_name.toLowerCase().includes(searchTerm.toLowerCase()) ||
       voter.user_id.toLowerCase().includes(searchTerm.toLowerCase())
@@ -119,6 +122,43 @@ export function ManageVotersPage() {
 
       <div className="text-white font-sans selection:bg-blue-500/30 pb-12">
 
+        
+      {/* Revoke Confirmation Modal */}
+      {userToRevoke && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm transition-opacity">
+          <div className="bg-[#0a0a0a] border border-white/10 rounded-2xl p-6 max-w-md w-full shadow-2xl relative overflow-hidden animate-enter">
+            <div className="absolute top-0 left-0 w-full h-1 bg-red-500"></div>
+            <div className="flex items-start gap-4 mb-4">
+              <div className="p-3 bg-red-500/10 rounded-xl text-red-500 shrink-0">
+                <Icons.Trash />
+              </div>
+              <div>
+                <h3 className="text-xl font-bold text-white mb-1">Revoke Access</h3>
+                <p className="text-sm text-gray-400">
+                  Are you sure you want to revoke access for this user? 
+                </p>
+              </div>
+            </div>
+            <div className="flex gap-3 mt-6">
+              <button
+                onClick={() => setUserToRevoke(null)}
+                disabled={!!processingId}
+                className="flex-1 py-2.5 px-4 rounded-xl border border-white/10 text-gray-300 hover:bg-white/5 hover:text-white transition-colors text-sm font-semibold disabled:opacity-50"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={executeRevoke}
+                disabled={!!processingId}
+                className="flex-1 py-2.5 px-4 rounded-xl bg-red-600 hover:bg-red-500 text-white transition-colors text-sm font-semibold shadow-lg shadow-red-900/20 disabled:opacity-50 flex items-center justify-center gap-2"
+              >
+                {processingId ? <LoadingSpinner size="sm" /> : 'Yes, Revoke Access'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
         <div className="relative z-10 max-w-7xl mx-auto p-6 lg:p-10 space-y-10">
 
           {/* --- Header --- */}
@@ -128,18 +168,14 @@ export function ManageVotersPage() {
                 Voter Database
               </h1>
               <p className="text-gray-400 text-sm mt-1">
-                Verify new registrations and manage the electoral roll.
+                Manage the electoral roll.
               </p>
             </div>
 
             <div className="flex gap-3">
               <div className="px-5 py-2.5 rounded-xl bg-white/5 border border-white/10 backdrop-blur-md flex flex-col items-end min-w-28">
-                <span className="text-[10px] bg-linear-to-r from-yellow-300 to-amber-300 bg-clip-text text-transparent font-bold uppercase tracking-wider">Pending</span>
-                <span className="font-mono text-xl text-white font-bold leading-none mt-1">{pendingVoters.length}</span>
-              </div>
-              <div className="px-5 py-2.5 rounded-xl bg-white/5 border border-white/10 backdrop-blur-md flex flex-col items-end min-w-28">
-                <span className="text-[10px] bg-linear-to-r from-emerald-300 to-cyan-300 bg-clip-text text-transparent font-bold uppercase tracking-wider">Verified</span>
-                <span className="font-mono text-xl text-white font-bold leading-none mt-1">{activeVoters.length}</span>
+                <span className="text-[10px] bg-linear-to-r from-emerald-300 to-cyan-300 bg-clip-text text-transparent font-bold uppercase tracking-wider">Registered</span>
+                <span className="font-mono text-xl text-white font-bold leading-none mt-1">{voters.length}</span>
               </div>
             </div>
           </header>
@@ -156,75 +192,7 @@ export function ManageVotersPage() {
             </div>
           )}
 
-          {/* --- Pending Verifications Section --- */}
-          {pendingVoters.length > 0 && (
-            <div className={`opacity-0 ${mounted ? 'animate-enter delay-100' : ''}`}>
-              <div className="flex items-center gap-3 mb-5">
-                <div className="p-2 bg-yellow-500/10 rounded-lg text-yellow-400 border border-yellow-500/20">
-                  <Icons.Clock />
-                </div>
-                <div>
-                  <h2 className="font-bold text-white text-lg">Pending Verifications</h2>
-                  <p className="text-xs text-gray-500">{pendingVoters.length} registration{pendingVoters.length !== 1 ? 's' : ''} awaiting review</p>
-                </div>
-                <span className="ml-auto relative flex h-3 w-3">
-                  <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-yellow-400 opacity-75"></span>
-                  <span className="relative inline-flex rounded-full h-3 w-3 bg-yellow-500"></span>
-                </span>
-              </div>
-
-              <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
-                {pendingVoters.map((voter) => (
-                  <div 
-                    key={voter.user_id} 
-                    className="group relative bg-[#0a0a0a] border border-white/10 hover:border-yellow-500/30 rounded-2xl p-5 transition-all duration-300 hover:-translate-y-1 hover:shadow-[0_10px_30px_rgba(0,0,0,0.5)] overflow-hidden"
-                  >
-                    {/* Left accent */}
-                    <div className="absolute left-0 top-0 w-1 h-full bg-yellow-500/50 group-hover:bg-yellow-500 transition-colors"></div>
-                    
-                    <div className="relative z-10">
-                      <div className="flex justify-between items-start mb-4">
-                        <div className="flex items-center gap-3">
-                          <div className="w-10 h-10 rounded-full bg-linear-to-br from-yellow-900/40 to-amber-900/20 border border-yellow-500/20 flex items-center justify-center text-yellow-400">
-                            <Icons.User />
-                          </div>
-                          <div>
-                            <h3 className="font-bold text-white group-hover:text-yellow-100 transition-colors">{voter.full_name}</h3>
-                            <span className="text-[10px] font-mono text-gray-600 uppercase tracking-widest">{voter.user_id}</span>
-                          </div>
-                        </div>
-                        <StatusBadge status="pending" />
-                      </div>
-
-                      <p className="text-xs text-gray-500 mb-5 flex items-center gap-1.5">
-                        <Icons.Clock />
-                        Registered: {voter.created_at ? new Date(voter.created_at).toLocaleDateString() : 'Just now'}
-                      </p>
-
-                      <div className="flex gap-2 pt-4 border-t border-white/5">
-                        <button
-                          onClick={() => handleVerify(voter.user_id)}
-                          disabled={processingId === voter.user_id}
-                          className="flex-1 flex items-center justify-center gap-1.5 bg-emerald-600 hover:bg-emerald-500 text-white text-sm font-bold py-2.5 rounded-xl transition-all disabled:opacity-50 shadow-lg shadow-emerald-900/20"
-                        >
-                          {processingId === voter.user_id ? <LoadingSpinner size="sm" /> : <><Icons.Check /> Verify</>}
-                        </button>
-                        <button
-                          onClick={() => handleReject(voter.user_id, false)}
-                          disabled={processingId === voter.user_id}
-                          className="flex-1 flex items-center justify-center gap-1.5 bg-white/5 hover:bg-red-500/20 text-gray-400 hover:text-red-400 border border-white/10 text-sm font-bold py-2.5 rounded-xl transition-all disabled:opacity-50"
-                        >
-                          Reject
-                        </button>
-                      </div>
-                    </div>
-                  </div>
-                ))}
-              </div>
-            </div>
-          )}
-
-          {/* --- Verified Voters Section --- */}
+          {/* --- Registered Voters Section --- */}
           <div className={`opacity-0 ${mounted ? 'animate-enter delay-200' : ''}`}>
             
             {/* Section Header */}
@@ -234,8 +202,8 @@ export function ManageVotersPage() {
                   <Icons.Shield />
                 </div>
                 <div>
-                  <h2 className="font-bold text-white text-lg">Verified Voter Roll</h2>
-                  <p className="text-xs text-gray-500">{activeVoters.length} verified voter{activeVoters.length !== 1 ? 's' : ''} in the system</p>
+                  <h2 className="font-bold text-white text-lg">Registered Voter Roll</h2>
+                  <p className="text-xs text-gray-500">{voters.length} registered voter{voters.length !== 1 ? 's' : ''} in the system</p>
                 </div>
               </div>
               
@@ -256,13 +224,13 @@ export function ManageVotersPage() {
 
             {/* Table */}
             <div className="bg-[#0a0a0a]/40 backdrop-blur-md border border-white/10 rounded-3xl min-h-100 flex flex-col overflow-hidden">
-              {filteredActiveVoters.length === 0 ? (
+              {filteredVoters.length === 0 ? (
                 <div className="flex-1 flex flex-col items-center justify-center py-20 text-gray-500">
                   <div className="w-16 h-16 rounded-2xl bg-white/5 flex items-center justify-center mb-4 text-gray-600">
                     <Icons.Users />
                   </div>
-                  <p className="font-medium text-white">{searchTerm ? 'No matches found' : 'No verified voters yet'}</p>
-                  <p className="text-sm mt-1">{searchTerm ? 'Try a different search term.' : 'Verify pending registrations above to populate this list.'}</p>
+                  <p className="font-medium text-white">{searchTerm ? 'No matches found' : 'No registered voters yet'}</p>
+                  <p className="text-sm mt-1">{searchTerm ? 'Try a different search term.' : ''}</p>
                 </div>
               ) : (
                 <div className="overflow-x-auto">
@@ -276,7 +244,7 @@ export function ManageVotersPage() {
                       </tr>
                     </thead>
                     <tbody className="text-sm divide-y divide-white/5">
-                      {filteredActiveVoters.map((voter) => (
+                      {filteredVoters.map((voter) => (
                         <tr key={voter.user_id} className="hover:bg-white/2 transition-colors group">
                           <td className="px-6 py-4 font-mono text-blue-200 text-xs">
                             {voter.user_id}
@@ -285,15 +253,27 @@ export function ManageVotersPage() {
                             {voter.full_name}
                           </td>
                           <td className="px-6 py-4">
-                            <StatusBadge status="verified" />
+                            <StatusBadge status={voter.status === 'deactivated' ? 'suspended' : 'registered'} />
                           </td>
                           <td className="px-6 py-4 text-right">
-                            <button
-                              onClick={() => handleReject(voter.user_id, true)}
-                              className="text-gray-600 hover:text-red-400 text-xs font-bold uppercase tracking-wider transition-colors opacity-0 group-hover:opacity-100"
-                            >
-                              Revoke Access
-                            </button>
+                            <div className="flex justify-end gap-3 md:opacity-0 md:group-hover:opacity-100 transition-opacity">
+                              {voter.status === 'deactivated' ? (
+                                <button
+                                  onClick={() => executeGrant(voter.user_id)}
+                                  disabled={processingId === voter.user_id}
+                                  className="text-emerald-400 hover:text-emerald-300 text-xs font-bold uppercase tracking-wider transition-colors disabled:opacity-50"
+                                >
+                                  Grant Access
+                                </button>
+                              ) : (
+                                <button
+                                  onClick={() => handleReject(voter.user_id)}
+                                  className="text-gray-600 hover:text-red-400 text-xs font-bold uppercase tracking-wider transition-colors"
+                                >
+                                  Revoke Access
+                                </button>
+                              )}
+                            </div>
                           </td>
                         </tr>
                       ))}
@@ -312,10 +292,10 @@ export function ManageVotersPage() {
 
 // --- Sub-Components ---
 
-function StatusBadge({ status }: { status: 'pending' | 'verified' }) {
+function StatusBadge({ status }: { status: 'registered' | 'suspended' }) {
   const configs = {
-    pending: { color: 'bg-yellow-500/10 text-yellow-400 border-yellow-500/20', label: 'Pending', dot: 'bg-yellow-400 animate-pulse' },
-    verified: { color: 'bg-emerald-500/10 text-emerald-400 border-emerald-500/20 shadow-[0_0_10px_rgba(16,185,129,0.2)]', label: 'Verified', dot: 'bg-emerald-400' },
+    registered: { color: 'bg-emerald-500/10 text-emerald-400 border-emerald-500/20 shadow-[0_0_10px_rgba(16,185,129,0.2)]', label: 'Registered', dot: 'bg-emerald-400' },
+    suspended: { color: 'bg-red-500/10 text-red-400 border-red-500/20', label: 'Suspended', dot: 'bg-red-400' },
   };
 
   const conf = configs[status];

@@ -194,15 +194,34 @@ export function LandingPage() {
         <div className="max-w-7xl mx-auto grid grid-cols-1 lg:grid-cols-2 gap-12 items-center relative z-10 w-full">
           
           {/* Left Column: Content */}
-          <div className="flex flex-col items-center text-center lg:items-start lg:text-left relative z-20 animate-float-subtle">
-            <h1 className="text-4xl md:text-6xl font-extrabold tracking-tight mb-6 leading-[1.1] animate-fade-in-up shadow-black drop-shadow-lg">
+          <div className="flex flex-col items-center text-center lg:items-start lg:text-left relative z-20 pt-10 lg:pt-0">
+            
+            {/* Mobile-Only Visual (Hidden on Large Screens) */}
+            <div className="lg:hidden w-full flex justify-center mb-8 animate-fade-in-up">
+              <div className="relative w-28 h-28">
+                <div className="absolute inset-0 bg-blue-500/20 rounded-full blur-2xl animate-pulse"></div>
+                <div className="w-full h-full bg-linear-to-br from-gray-900 to-black border border-white/10 rounded-4xl shadow-2xl flex items-center justify-center transform rotate-6 animate-float">
+                  <div className="absolute inset-0 bg-linear-to-b from-white/5 to-transparent rounded-4xl"></div>
+                  <svg className="w-12 h-12 text-cyan-400 drop-shadow-[0_0_10px_rgba(6,182,212,0.5)]" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z" />
+                  </svg>
+                </div>
+              </div>
+            </div>
+
+            <div className="lg:hidden inline-flex items-center gap-2 px-3 py-1.5 rounded-full bg-white/5 border border-white/10 text-gray-300 text-xs font-medium mb-6 animate-fade-in-up shadow-lg">
+              <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse drop-shadow-[0_0_8px_rgba(52,211,153,0.8)]"></span>
+              Secure Voting Live
+            </div>
+
+            <h1 className="text-4xl md:text-6xl font-extrabold tracking-tight mb-6 leading-[1.1] animate-fade-in-up shadow-black drop-shadow-lg lg:p-0">
               Democracy, <br />
               <span className="text-transparent bg-clip-text bg-linear-to-r from-blue-400 via-cyan-300 to-emerald-400">
                 Decentralized.
               </span>
             </h1>
             
-            <p className="text-lg text-gray-400 mb-8 max-w-lg leading-relaxed animate-fade-in-up delay-100">
+            <p className="text-lg text-gray-400 mb-8 max-w-lg leading-relaxed animate-fade-in-up delay-100 lg:p-0">
               Your voice matters. Secure, transparent, and immutable voting for the modern era.
             </p>
             
@@ -210,20 +229,20 @@ export function LandingPage() {
             <div className="flex flex-col sm:flex-row gap-4 mb-10 animate-fade-in-up delay-200 w-full sm:w-auto">
               <button 
                 onClick={() => smoothScrollTo('features')}
-                className="bg-linear-to-r from-blue-500 to-cyan-400 hover:from-blue-600 hover:to-cyan-500 text-white px-10 py-4 w-full sm:w-auto rounded-full text-lg font-bold transition-all shadow-[0_0_20px_rgba(59,130,246,0.5)] hover:shadow-[0_0_30px_rgba(59,130,246,0.7)] transform hover:-translate-y-1 whitespace-nowrap"
+                className="bg-linear-to-r from-blue-500 to-cyan-400 hover:from-blue-600 hover:to-cyan-500 text-white px-10 py-4 w-full sm:w-auto rounded-xl sm:rounded-full text-lg font-bold transition-all shadow-[0_0_20px_rgba(59,130,246,0.5)] hover:shadow-[0_0_30px_rgba(59,130,246,0.7)] transform hover:-translate-y-1 whitespace-nowrap"
               >
                 View Features
               </button>
               <button 
                 onClick={() => smoothScrollTo('how-it-works')} 
-                className="backdrop-blur-sm bg-white/5 hover:bg-white/10 border border-white/20 text-white px-10 py-4 w-full sm:w-auto rounded-full text-lg font-bold transition-all hover:border-white/40 whitespace-nowrap"
+                className="backdrop-blur-sm bg-white/5 hover:bg-white/10 border border-white/20 text-white px-10 py-4 w-full sm:w-auto rounded-xl sm:rounded-full text-lg font-bold transition-all hover:border-white/40 whitespace-nowrap"
               >
                 How It Works
               </button>
             </div>
 
             {/* Social Proof / Stats Pill */}
-            <div className="animate-fade-in-up delay-300 inline-flex items-center gap-4 bg-[#121212]/80 backdrop-blur-md border border-white/10 rounded-2xl p-3 w-fit shadow-lg transform transition-transform hover:scale-105 cursor-default">
+            <div className="animate-fade-in-up delay-300 inline-flex items-center gap-4 bg-[#121212]/80 backdrop-blur-md border border-white/10 rounded-2xl p-3 w-fit shadow-lg transform transition-transform hover:scale-105 cursor-default mt-auto lg:mt-0">
                <div className="flex -space-x-3">
                   <div className="w-8 h-8 rounded-full border-2 border-black bg-linear-to-br from-blue-500 to-cyan-500 flex items-center justify-center text-[10px] font-bold text-white shadow-md">A</div>
                   <div className="w-8 h-8 rounded-full border-2 border-black bg-linear-to-br from-purple-500 to-pink-500 flex items-center justify-center text-[10px] font-bold text-white shadow-md">B</div>

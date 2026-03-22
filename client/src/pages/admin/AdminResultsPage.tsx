@@ -280,58 +280,74 @@ export function ResultsPage() {
                           ) : (
                             <div className="grid grid-cols-1 gap-6">
                               {results.map((position) => (
-                                <div key={position.position_id} className="rounded-2xl bg-[#0a0a0a] border border-white/10 overflow-hidden hover:-translate-y-0.5 transition-all">
-                                  <div className="bg-white/3 p-6 border-b border-white/5 flex justify-between items-center">
-                                    <h3 className="text-lg font-bold text-blue-100">{position.position_title}</h3>
-                                    <div className="text-xs font-mono text-gray-400 bg-black/30 px-3 py-1 rounded-lg border border-white/10">
-                                      {position.total_votes} Total Votes
+                                <div key={position.position_id} className="rounded-2xl bg-[#0a0a0a] border border-white/10 overflow-hidden shadow-lg hover:-translate-y-0.5 transition-all">
+                                  <div className="bg-white/5 p-6 border-b border-white/5 flex justify-between items-center">
+                                    <h3 className="text-lg font-bold text-white">{position.position_title}</h3>
+                                    <div className="text-xs font-bold text-cyan-400 bg-cyan-900/20 px-3 py-1 rounded-full border border-cyan-500/20 tracking-wider uppercase">
+                                      {position.total_votes.toLocaleString()} Votes
                                     </div>
                                   </div>
-                                  <div className="p-6 space-y-5">
+                                  <div className="p-4 sm:p-6 space-y-4">
                                     {position.candidates
                                       .sort((a, b) => b.vote_count - a.vote_count)
                                       .map((candidate, index) => {
-                                        const isWinner = index === 0 && position.total_votes > 0;
+                                        const isWinner = index === 0 && position.total_votes > 0 && !position.is_tie;
+                                        const isTied = position.is_tie && (index === 0 || index === 1) && position.total_votes > 0;
+                                        
                                         return (
-                                          <div key={candidate.candidate_id} className="relative group">
-                                            <div className="flex justify-between items-center mb-2 relative z-10">
+                                          <div key={candidate.candidate_id} className={`relative p-4 rounded-2xl border transition-all ${
+                                            isWinner ? 'bg-yellow-500/5 border-yellow-500/30 shadow-[0_0_20px_rgba(234,179,8,0.05)]' : 
+                                            isTied ? 'bg-blue-500/10 border-blue-500/30 shadow-[0_0_20px_rgba(59,130,246,0.05)]' :
+                                            'bg-white/5 border-white/10'
+                                          }`}>
+                                            <div className="flex justify-between items-center mb-4">
+                                              
                                               <div className="flex items-center gap-4">
-                                                <div className={`w-8 h-8 flex items-center justify-center rounded-lg font-bold text-sm transition-all ${
-                                                  isWinner
-                                                    ? 'bg-yellow-500 text-black shadow-[0_0_15px_rgba(234,179,8,0.5)] scale-110'
-                                                    : 'bg-white/5 text-gray-500 border border-white/10 group-hover:bg-white/10'
+                                                <div className={`w-12 h-12 rounded-full flex items-center justify-center font-bold shrink-0 border-2 ${
+                                                  isWinner ? 'bg-yellow-500/20 text-yellow-500 border-yellow-500 shadow-lg shadow-yellow-500/20' : 
+                                                  isTied ? 'bg-blue-500/20 text-blue-400 border-blue-500 shadow-lg shadow-blue-500/20' :
+                                                  'bg-white/5 text-gray-400 border-white/10'
                                                 }`}>
-                                                  {index + 1}
+                                                  {isWinner || isTied ? <Icons.Trophy /> : <span className="text-lg">{index + 1}</span>}
                                                 </div>
+                                                
                                                 <div>
-                                                  <span className={`font-bold text-lg transition-colors ${isWinner ? 'text-white' : 'text-gray-300 group-hover:text-white'}`}>
+                                                  <div className={`font-bold text-base sm:text-lg leading-tight ${isWinner || isTied ? 'text-white' : 'text-gray-300'}`}>
                                                     {candidate.candidate_name}
-                                                  </span>
+                                                  </div>
                                                   {isWinner && (
-                                                    <span className="ml-3 text-[10px] uppercase font-bold text-yellow-500 tracking-wider inline-flex items-center gap-1">
-                                                      <Icons.Trophy /> Winner
-                                                    </span>
+                                                    <div className="text-[10px] font-bold text-yellow-500 uppercase tracking-widest mt-1">
+                                                      Elected Winner
+                                                    </div>
+                                                  )}
+                                                  {isTied && (
+                                                    <div className="text-[10px] font-bold text-blue-400 uppercase tracking-widest mt-1">
+                                                      Tied - Runoff Required
+                                                    </div>
                                                   )}
                                                 </div>
                                               </div>
-                                              <div className="text-right">
-                                                <span className="block font-mono font-bold text-lg">{candidate.percentage}%</span>
-                                                <span className="text-xs text-gray-500">{candidate.vote_count} votes</span>
+                                              
+                                              <div className="text-right pl-4">
+                                                <div className="font-extrabold text-xl sm:text-2xl leading-none text-white">
+                                                  {candidate.percentage}%
+                                                </div>
+                                                <div className="text-xs font-medium mt-1 text-gray-500">
+                                                  {candidate.vote_count.toLocaleString()} <span className="hidden sm:inline">votes</span>
+                                                </div>
                                               </div>
                                             </div>
-                                            <div className="h-2 bg-gray-800 rounded-full overflow-hidden relative">
+
+                                            <div className="h-1.5 rounded-full overflow-hidden w-full bg-gray-800 border border-white/5">
                                               <div
-                                                className={`h-full rounded-full transition-all duration-1000 ease-out relative overflow-hidden ${
-                                                  isWinner ? 'bg-linear-to-r from-yellow-600 to-yellow-400' : 'bg-blue-600/40'
+                                                className={`h-full rounded-full transition-all duration-1000 ease-out ${
+                                                  isWinner ? 'bg-linear-to-r from-yellow-600 to-yellow-300' : 
+                                                  isTied ? 'bg-linear-to-r from-blue-600 to-blue-400' :
+                                                  'bg-linear-to-r from-gray-600 to-gray-400 opacity-70'
                                                 }`}
                                                 style={{ width: `${candidate.percentage}%` }}
-                                              >
-                                                <div className="absolute top-0 left-0 w-full h-full bg-linear-to-b from-white/20 to-transparent"></div>
-                                              </div>
+                                              />
                                             </div>
-                                            {isWinner && (
-                                              <div className="absolute -inset-2 bg-yellow-500/5 rounded-xl blur-md z-0 opacity-50"></div>
-                                            )}
                                           </div>
                                         );
                                       })}

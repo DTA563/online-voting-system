@@ -258,7 +258,7 @@ export function AdminDashboardPage() {
                    <p className="text-gray-500 text-sm mt-2 max-w-xs mx-auto">
                       There are no elections currently active. Launch a new session to monitor real-time voting data.
                    </p>
-                   <Link to="/admin/elections/new" className="inline-block mt-6 text-cyan-400 hover:text-cyan-300 text-sm font-bold">
+                   <Link to="/admin/elections" className="inline-block mt-6 text-cyan-400 hover:text-cyan-300 text-sm font-bold">
                       + Start Election
                    </Link>
                 </div>

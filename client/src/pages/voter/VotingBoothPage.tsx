@@ -216,13 +216,13 @@ export function VotingBoothPage() {
   // --- Loading Skeleton (Results Page Style) ---
   if (isLoading) {
     return (
-      <div className="p-6 lg:p-10 space-y-6 animate-pulse max-w-4xl mx-auto mt-10">
-        <div className="h-32 bg-card-hover rounded-3xl border border-border mb-10"></div>
+      <div className="p-6 lg:p-10 space-y-6 animate-pulse max-w-4xl mx-auto mt-10 text-white">
+        <div className="h-32 bg-white/5 rounded-3xl border border-white/10 mb-10"></div>
         {[1, 2].map(i => (
           <div key={i} className="space-y-3">
-            <div className="h-8 w-1/3 bg-card-hover rounded-lg mb-4"></div>
-            <div className="h-20 bg-card-hover rounded-2xl border border-border"></div>
-            <div className="h-20 bg-card-hover rounded-2xl border border-border"></div>
+            <div className="h-8 w-1/3 bg-white/5 rounded-lg mb-4"></div>
+            <div className="h-20 bg-white/5 rounded-2xl border border-white/10"></div>
+            <div className="h-20 bg-white/5 rounded-2xl border border-white/10"></div>
           </div>
         ))}
       </div>
@@ -352,7 +352,7 @@ export function VotingBoothPage() {
                 >
                   {/* Decorative Gradient Background on Hover (for active) */}
                   {!alreadyVoted && (
-                    <div className="absolute inset-0 bg-gradient-to-br from-accent-primary/5 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-500" />
+                    <div className="absolute inset-0 bg-linear-to-br from-accent-primary/5 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-500" />
                   )}
 
                   <div className="relative z-10 w-full mb-6">
@@ -410,14 +410,14 @@ export function VotingBoothPage() {
         <div className="flex-1 flex items-center justify-center p-6 min-h-[80vh]">
           <div className="w-full max-w-md">
             <div className={`bg-card border border-border rounded-3xl p-8 md:p-12 text-center shadow-2xl relative overflow-hidden transform transition-all duration-700 ease-out ${votedViewMounted ? 'translate-y-0 opacity-100 scale-100' : 'translate-y-8 opacity-0 scale-95'}`}>
-              <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-accent-success to-teal-500"></div>
+              <div className="absolute top-0 left-0 w-full h-1 bg-linear-to-r from-accent-success to-teal-500"></div>
               {eligibleElections.length > 1 && (
                 <button onClick={() => setSelectedElection(null)} className="absolute top-6 left-6 text-sm text-tertiary hover:text-primary transition-colors">
                   &larr; Back
                 </button>
               )}
               <div className="w-20 h-20 mx-auto mb-6 mt-4">
-                <div className="w-full h-full bg-gradient-to-br from-accent-success/20 to-teal-600/20 border border-accent-success/30 rounded-full flex items-center justify-center shadow-[0_0_30px_rgba(16,185,129,0.2)] text-accent-success">
+                <div className="w-full h-full bg-linear-to-br from-accent-success/20 to-teal-600/20 border border-accent-success/30 rounded-full flex items-center justify-center shadow-[0_0_30px_rgba(16,185,129,0.2)] text-accent-success">
                   <Icons.Check className="w-8 h-8" />
                 </div>
               </div>
@@ -474,14 +474,14 @@ export function VotingBoothPage() {
               </div>
 
               {/* Progress Summary */}
-              <div className="relative z-10 bg-card-hover border border-border rounded-2xl p-4 min-w-[200px] text-center">
+              <div className="relative z-10 bg-card-hover border border-border rounded-2xl p-4 min-w-50 text-center">
                 <div className="text-3xl font-extrabold text-primary mb-1">
                   {Object.keys(selectedCandidates).length} <span className="text-lg text-tertiary">/ {positions.length}</span>
                 </div>
                 <div className="text-xs text-secondary uppercase tracking-wider font-bold mb-3">Positions Selected</div>
                 <div className="w-full h-1.5 bg-border rounded-full overflow-hidden">
                   <div 
-                    className="h-full bg-gradient-to-r from-accent-secondary to-accent-primary transition-all duration-500 ease-out"
+                    className="h-full bg-linear-to-r from-accent-secondary to-accent-primary transition-all duration-500 ease-out"
                     style={{ width: `${selectionProgress}%` }}
                   ></div>
                 </div>
@@ -595,7 +595,7 @@ export function VotingBoothPage() {
                 disabled={isSubmitting || Object.keys(selectedCandidates).length !== positions.length}
                 className={`w-full sm:w-auto px-8 py-3 rounded-xl font-bold text-sm transition-all flex items-center justify-center gap-2 ${
                   Object.keys(selectedCandidates).length === positions.length
-                    ? 'bg-gradient-to-r from-accent-success to-teal-500 shadow-[0_0_20px_rgba(16,185,129,0.3)] text-white hover:scale-[1.02] active:scale-[0.98]'
+                    ? 'bg-linear-to-r from-accent-success to-teal-500 shadow-[0_0_20px_rgba(16,185,129,0.3)] text-white hover:scale-[1.02] active:scale-[0.98]'
                     : 'bg-card-hover text-tertiary cursor-not-allowed border border-border'
                 }`}
               >

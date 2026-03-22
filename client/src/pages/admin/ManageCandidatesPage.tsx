@@ -219,8 +219,8 @@ export function ManageCandidatesPage() {
     setError(null);
 
     try {
-      // Get token from localStorage
-      const token = localStorage.getItem('token');
+      // Get token from sessionStorage
+      const token = sessionStorage.getItem('token');
       
       if (!token) {
         throw new Error('No token found. Please log in again.');

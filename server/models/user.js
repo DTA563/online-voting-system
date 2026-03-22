@@ -59,6 +59,15 @@ class User {
         return result;
     }
 
+    // Update user status
+    static async updateStatus(userId, status) {
+        const [result] = await db.query(
+            'UPDATE users SET status = ? WHERE user_id = ?',
+            [status, userId]
+        );
+        return result;
+    }
+
     // Permanently delete a user
     static async delete(userId) {
         const [result] = await db.query(

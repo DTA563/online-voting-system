@@ -14,6 +14,9 @@ router.get('/', userController.getUsers);
 // URL: PATCH /api/users/verify/:id
 router.patch('/verify/:id', userController.verifyUser);
 
+// URL: PATCH /api/users/status/:id
+router.patch('/status/:id', userController.updateUserStatus);
+
 // URL: DELETE /api/users/:id
 router.delete('/:id', userController.deleteUser);
 

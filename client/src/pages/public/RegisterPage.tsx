@@ -106,7 +106,7 @@ export function RegisterPage() {
       {/* --- Main Card --- */}
       <div className={`
         relative z-10 w-full max-w-4xl grid grid-cols-1 lg:grid-cols-2 
-        overflow-hidden rounded-[2rem] border border-white/10 shadow-2xl 
+        overflow-hidden rounded-4xl border border-white/10 shadow-2xl 
         backdrop-blur-xl bg-[#0a0a0a]/80
         transform transition-all duration-700 ease-out
         ${mounted ? 'translate-y-0 opacity-100 scale-100' : 'translate-y-8 opacity-0 scale-95'}
@@ -141,7 +141,7 @@ export function RegisterPage() {
             {/* Steps Timeline Visual - Updated: Changed "Verification" to "Login" */}
             <div className="space-y-4 relative">
                {/* Vertical Line */}
-               <div className="absolute left-[11px] top-3 bottom-3 w-0.5 bg-white/10"></div>
+               <div className="absolute left-2.75 top-3 bottom-3 w-0.5 bg-white/10"></div>
                
                {[
                   { title: 'Registration', desc: 'Enter your details', active: true },
@@ -178,10 +178,9 @@ export function RegisterPage() {
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M5 13l4 4L19 7" />
                 </svg>
               </div>
-              <h2 className="text-2xl font-bold text-white mb-3">Request Submitted</h2>
+              <h2 className="text-2xl font-bold text-white mb-3">Registration Successful</h2>
               <p className="text-gray-400 text-sm mb-6 max-w-sm leading-relaxed">
-                Your registration is currently <span className="text-yellow-400 font-bold border-b border-yellow-400/30">pending verification</span>. 
-                You will be notified once an administrator approves your account.
+                Your account has been successfully created. You can now log in to the system.
               </p>
               <Link 
                 to="/login" 
@@ -199,7 +198,7 @@ export function RegisterPage() {
 
               {error && (
                 <div className="mb-4 bg-red-500/10 border border-red-500/20 rounded-lg p-3 flex items-start gap-2 animate-shake">
-                   <svg className="w-4 h-4 text-red-400 min-w-[16px] mt-0.5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" /></svg>
+                   <svg className="w-4 h-4 text-red-400 min-w-4 mt-0.5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" /></svg>
                   <p className="text-red-200 text-xs text-left">{error}</p>
                 </div>
               )}
@@ -305,7 +304,7 @@ export function RegisterPage() {
                   <button
                     type="submit"
                     disabled={isLoading}
-                    className="w-full py-3 rounded-lg font-bold transition-all duration-300 disabled:opacity-50 flex items-center justify-center gap-2 hover:scale-[1.02] active:scale-[0.98] bg-linear-to-r from-blue-600 to-cyan-500 shadow-[0_0_20px_rgba(6,182,212,0.3)] hover:shadow-[0_0_30px_rgba(6,182,212,0.5)] shadow-lg text-white text-sm"
+                    className="w-full py-3 rounded-lg font-bold transition-all duration-300 disabled:opacity-50 flex items-center justify-center gap-2 hover:scale-[1.02] active:scale-[0.98] bg-linear-to-r from-blue-600 to-cyan-500 shadow-[0_0_20px_rgba(6,182,212,0.3)] hover:shadow-[0_0_30px_rgba(6,182,212,0.5)] text-white text-sm"
                   >
                     {isLoading ? (
                       <span className="flex items-center gap-2">

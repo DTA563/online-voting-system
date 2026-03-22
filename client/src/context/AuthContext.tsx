@@ -27,13 +27,13 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   // Check for existing token on mount
   useEffect(() => {
     const initializeAuth = () => {
-      const storedToken = localStorage.getItem('token');
-      const storedUser = localStorage.getItem('user');
+      const storedToken = sessionStorage.getItem('token');
+      const storedUser = sessionStorage.getItem('user');
 
       if (storedToken && storedUser) {
         try {
           const parsedUser = JSON.parse(storedUser);
-          console.log('🔐 AuthContext - User loaded from localStorage:', parsedUser);
+          console.log('🔐 AuthContext - User loaded from sessionStorage:', parsedUser);
           console.log('🔐 AuthContext - User full_name:', parsedUser?.full_name);
           console.log('🔐 AuthContext - All user properties:', Object.keys(parsedUser));
           
@@ -42,8 +42,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         } catch (error) {
           console.error('🔐 AuthContext - Error parsing stored user:', error);
           // Clear invalid data
-          localStorage.removeItem('token');
-          localStorage.removeItem('user');
+          sessionStorage.removeItem('token');
+          sessionStorage.removeItem('user');
         }
         setIsLoading(false);
         return;
@@ -93,8 +93,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       setToken(data.token);
       setUser(data.user);
       
-      localStorage.setItem('token', data.token);
-      localStorage.setItem('user', JSON.stringify(data.user));
+      sessionStorage.setItem('token', data.token);
+      sessionStorage.setItem('user', JSON.stringify(data.user));
 
       console.log("🔵 User stored successfully:", data.user);
 
@@ -107,6 +107,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       // If the server sends a response (404, 401, etc.)
       if (error.response) {
         const status = error.response.status;
+
+        // 403 = Forbidden (Suspended/Deactivated User)
+        if (status === 403) {
+            throw new Error("Account deactivated. Please contact an administrator.");
+        }
 
         // 404 = User Not Found
         // 401 = Password Incorrect
@@ -136,8 +141,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       // 2. Clear local auth state
       setToken(null);
       setUser(null);
-      localStorage.removeItem('token');
-      localStorage.removeItem('user');
+      sessionStorage.removeItem('token');
+      sessionStorage.removeItem('user');
       // Note: The useEffect above will handle the redirect automatically
     }
   };

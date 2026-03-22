@@ -92,13 +92,13 @@ export function VoterResultsPage() {
 
   if (isLoading) {
     return (
-      <div className="font-sans animate-pulse max-w-4xl mx-auto p-4 md:p-8 space-y-8 mt-4">
-        <div className="h-32 bg-card-hover rounded-3xl border border-border"></div>
+      <div className="p-6 lg:p-10 space-y-8 animate-pulse text-white mt-10 max-w-4xl mx-auto">
+        <div className="h-32 bg-white/5 rounded-3xl border border-white/10 mb-10"></div>
         <div className="flex gap-4">
-          {[1, 2, 3].map(i => <div key={i} className="h-10 w-32 rounded-full bg-card-hover border border-border"></div>)}
+          {[1, 2, 3].map(i => <div key={i} className="h-10 w-32 rounded-full bg-white/5 border border-white/10"></div>)}
         </div>
         <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-          {[1, 2, 3].map(i => <div key={i} className="h-32 rounded-3xl bg-card-hover border border-border"></div>)}
+          {[1, 2, 3].map(i => <div key={i} className="h-32 rounded-3xl bg-white/5 border border-white/10"></div>)}
         </div>
       </div>
     );
@@ -249,7 +249,7 @@ export function VoterResultsPage() {
                     </div>
 
                     {isLoadingResults ? (
-                      <div className="h-64 rounded-3xl bg-card-hover border border-border animate-pulse"></div>
+                      <div className="h-64 rounded-3xl bg-white/5 border border-white/10 animate-pulse"></div>
                     ) : (
                       <>
                         {/* Metric Dashboard */}
@@ -258,7 +258,7 @@ export function VoterResultsPage() {
                             
                             {/* Final Turnout Metric */}
                             <div className="bg-card border border-border rounded-2xl p-6 relative overflow-hidden group">
-                              <div className="absolute top-0 right-0 w-32 h-32 bg-accent-primary/5 rounded-full blur-[40px] group-hover:bg-accent-primary/10 transition-colors"></div>
+                              <div className="absolute top-0 right-0 w-32 h-32 bg-accent-primary/5 rounded-full blur-2xl group-hover:bg-accent-primary/10 transition-colors"></div>
                               <div className="relative z-10">
                                 <p className="text-xs font-bold uppercase tracking-wider text-tertiary mb-2 flex items-center gap-2">
                                   <Icons.Chart className="w-4 h-4" /> Final Turnout
@@ -267,12 +267,12 @@ export function VoterResultsPage() {
                                   {turnout.percentage}<span className="text-2xl text-tertiary">%</span>
                                 </div>
                               </div>
-                              <div className="absolute bottom-0 left-0 h-1 bg-gradient-to-r from-accent-secondary to-accent-primary" style={{ width: `${turnout.percentage}%` }}></div>
+                              <div className="absolute bottom-0 left-0 h-1 bg-linear-to-r from-accent-secondary to-accent-primary" style={{ width: `${turnout.percentage}%` }}></div>
                             </div>
 
                             {/* Votes Cast */}
                             <div className="bg-card border border-border rounded-2xl p-6 relative overflow-hidden group">
-                              <div className="absolute top-0 right-0 w-32 h-32 bg-accent-success/5 rounded-full blur-[40px] group-hover:bg-accent-success/10 transition-colors"></div>
+                              <div className="absolute top-0 right-0 w-32 h-32 bg-accent-success/5 rounded-full blur-2xl group-hover:bg-accent-success/10 transition-colors"></div>
                               <p className="text-xs font-bold uppercase tracking-wider text-tertiary mb-2 flex items-center gap-2">
                                 <Icons.Users className="w-4 h-4" /> Total Votes Cast
                               </p>
@@ -283,7 +283,7 @@ export function VoterResultsPage() {
 
                             {/* Eligible Voters */}
                             <div className="bg-card border border-border rounded-2xl p-6 relative overflow-hidden group">
-                              <div className="absolute top-0 right-0 w-32 h-32 bg-card-hover rounded-full blur-[40px] group-hover:bg-card-hover transition-colors"></div>
+                              <div className="absolute top-0 right-0 w-32 h-32 bg-card-hover rounded-full blur-2xl group-hover:bg-card-hover transition-colors"></div>
                               <p className="text-xs font-bold uppercase tracking-wider text-tertiary mb-2">
                                 Total Eligible Voters
                               </p>
@@ -324,7 +324,7 @@ export function VoterResultsPage() {
                                         
                                         return (
                                           <div key={candidate.candidate_id} className={`relative p-4 rounded-2xl border transition-all ${
-                                            isWinner ? 'bg-accent-warning/5 border-accent-warning/30 shadow-[0_0_20px_rgba(245,158,11,0.05)]' : 
+                                            isWinner ? 'bg-yellow-500/5 border-yellow-500/30 shadow-[0_0_20px_rgba(234,179,8,0.05)]' : 
                                             isTied ? 'bg-blue-500/10 border-blue-500/30 shadow-[0_0_20px_rgba(59,130,246,0.05)]' :
                                             'bg-card-hover border-border'
                                           }`}>
@@ -332,11 +332,11 @@ export function VoterResultsPage() {
                                               
                                               <div className="flex items-center gap-4">
                                                 <div className={`w-12 h-12 rounded-full flex items-center justify-center font-bold shrink-0 border-2 ${
-                                                  isWinner ? 'bg-accent-warning/20 text-accent-warning border-accent-warning shadow-lg shadow-accent-warning/20' : 
+                                                  isWinner ? 'bg-yellow-500/20 text-yellow-500 border-yellow-500 shadow-lg shadow-yellow-500/20' : 
                                                   isTied ? 'bg-blue-500/20 text-blue-400 border-blue-500 shadow-lg shadow-blue-500/20' :
                                                   'bg-card-hover text-tertiary border-border'
                                                 }`}>
-                                                  {isWinner || isTied ? <Icons.Trophy /> : <Icons.UserPlaceholder className="w-5 h-5" />}
+                                                  {isWinner || isTied ? <Icons.Trophy /> : <span className="text-lg">{index + 1}</span>}
                                                 </div>
                                                 
                                                 <div>
@@ -344,7 +344,7 @@ export function VoterResultsPage() {
                                                     {candidate.candidate_name}
                                                   </div>
                                                   {isWinner && (
-                                                    <div className="text-[10px] font-bold text-accent-warning uppercase tracking-widest mt-1">
+                                                    <div className="text-[10px] font-bold text-yellow-500 uppercase tracking-widest mt-1">
                                                       Elected Winner
                                                     </div>
                                                   )}
@@ -369,9 +369,9 @@ export function VoterResultsPage() {
                                             <div className="h-1.5 rounded-full overflow-hidden w-full bg-secondary border border-border">
                                               <div
                                                 className={`h-full rounded-full transition-all duration-1000 ease-out ${
-                                                  isWinner ? 'bg-gradient-to-r from-accent-warning to-yellow-300' : 
-                                                  isTied ? 'bg-gradient-to-r from-blue-600 to-blue-400' :
-                                                  'bg-gradient-to-r from-accent-secondary to-accent-primary opacity-70'
+                                                  isWinner ? 'bg-linear-to-r from-yellow-600 to-yellow-300' : 
+                                                  isTied ? 'bg-linear-to-r from-blue-600 to-blue-400' :
+                                                  'bg-linear-to-r from-accent-secondary to-accent-primary opacity-70'
                                                 }`}
                                                 style={{ width: `${candidate.percentage}%` }}
                                               />

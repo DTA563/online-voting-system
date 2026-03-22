@@ -2,6 +2,9 @@ import { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import { adminApi, DashboardStats } from '../../api/admin.api';
 import { auditApi, AuditLog } from '../../api/audit.api';
+import { electionsApi } from '../../api/elections.api';
+import { votesApi } from '../../api/votes.api';
+import { Election } from '../../types';
 
 // ── Types ────────────────────────────────────────────────
 interface Alert {
@@ -32,6 +35,7 @@ export function SuperAdminDashboardPage() {
   const [stats, setStats] = useState<DashboardStats | null>(null);
   const [logs, setLogs] = useState<AuditLog[]>([]);
   const [alerts, setAlerts] = useState<Alert[]>([]);
+  const [turnoutStats, setTurnoutStats] = useState({ total: 0, voted: 0, percentage: 0 });
   const [isLoading, setIsLoading] = useState(true);
   const [mounted, setMounted] = useState(false);
 
@@ -43,15 +47,42 @@ export function SuperAdminDashboardPage() {
 
   const loadDashboardData = async () => {
     try {
-      const [statsData, logsData] = await Promise.all([
+      const [statsData, logsData, allElections] = await Promise.all([
         adminApi.getStats(), 
-        auditApi.getSuperAdminLogs()
+        auditApi.getSuperAdminLogs(),
+        electionsApi.getAll().catch(() => [])
       ]);
       
       setStats(statsData);
       setLogs(logsData);
       
       generateAlerts(logsData, statsData);
+
+      // Calculate Real Turnout Metrics
+      const activeElections = (allElections || []).filter((e: Election) => e.status === 'active');
+      let combinedVoted = 0;
+      let combinedTotal = 0;
+
+      if (activeElections.length > 0) {
+        const turnoutPromises = activeElections.map((e: Election) =>
+           votesApi.getTurnout(e.election_id).catch(() => null)
+        );
+        const turnoutResults = await Promise.all(turnoutPromises);
+        
+        turnoutResults.forEach(res => {
+          if (res) {
+             combinedVoted += res.voted || 0;
+             combinedTotal += res.total || 0;
+          }
+        });
+      }
+
+      setTurnoutStats({
+        voted: combinedVoted,
+        total: combinedTotal,
+        percentage: combinedTotal > 0 ? Math.round((combinedVoted / combinedTotal) * 100) : 0
+      });
+      
     } catch (err) {
       console.error('Fetch failed', err);
     } finally {
@@ -105,15 +136,7 @@ export function SuperAdminDashboardPage() {
 
   // Calculate system metrics
   const calculateEngagementRate = () => {
-    if (!stats?.users?.by_role) return 0;
-    const totalVoters = stats.users.by_role.voter || 0;
-    const activeElections = stats?.elections?.active || 0;
-    // If there are active elections, calculate a realistic engagement rate
-    if (activeElections > 0 && totalVoters > 0) {
-      // This is a placeholder calculation - adjust based on your actual metrics
-      return Math.min(85, Math.round((activeElections / totalVoters) * 1000));
-    }
-    return 0;
+    return turnoutStats.percentage;
   };
 
   const getUniqueIPsToday = () => {
@@ -379,9 +402,9 @@ export function SuperAdminDashboardPage() {
                             </div>
                          </div>
                          <div className="p-3 rounded-xl bg-zinc-900/50 border border-zinc-800">
-                            <div className="text-[10px] text-zinc-500 uppercase mb-1">Active Voters</div>
-                            <div className="text-xl font-bold text-white">{getActiveVoters()}</div>
-                            <div className="text-[8px] text-zinc-600 mt-1">last hour activity</div>
+                              <div className="text-[10px] text-zinc-500 uppercase mb-1">Votes Cast</div>
+                              <div className="text-xl font-bold text-white">{turnoutStats.voted}</div>
+                              <div className="text-[8px] text-zinc-600 mt-1">across active elections</div>
                          </div>
                       </div>
 
@@ -456,9 +479,9 @@ export function SuperAdminDashboardPage() {
                       icon={<Icons.Grid />} 
                    />
                    <ActionButton 
-                      label="Security Dashboard" 
-                      href="/super-admin/audit"
-                      icon={<Icons.Shield />} 
+                      label="Account Oversight" 
+                      href="/super-admin/accounts"
+                      icon={<Icons.Users />} 
                    />
                 </div>
 
