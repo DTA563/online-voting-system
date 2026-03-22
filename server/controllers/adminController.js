@@ -58,7 +58,7 @@ exports.getDashboardStats = async (req, res) => {
 
         res.json({
             status: "success",
-            data: { // Add this wrapper
+            data: {
                 users: {
                     by_role: userStats,
                     pending: pendingCount[0].count

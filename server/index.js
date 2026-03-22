@@ -4,7 +4,7 @@ const path = require('path');
 const fs = require('fs');
 require('dotenv').config();
 
-// ADDED: Built-in Node module and Socket.io
+// Built-in Node module and Socket.io
 const http = require('http'); 
 const { Server } = require('socket.io'); 
 
@@ -75,7 +75,11 @@ app.use((req, res, next) => {
 });
 
 // GLOBAL MIDDLEWARE 
-app.use(cors());
+app.use(cors({
+    origin: "*", // Allows any frontend to connect
+    methods: ["GET", "POST", "PUT", "DELETE", "PATCH"],
+    credentials: true
+}));
 app.use(express.json({ limit: '50mb' })); // Parses incoming JSON requests
 app.use(express.urlencoded({ extended: true, limit: '50mb' }));
 

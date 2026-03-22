@@ -8,10 +8,7 @@ const adminMiddleware = require('../middleware/adminMiddleware');
 // Standard security for all election routes
 router.use(authMiddleware);
 
-/**
- * FIX 1: Map /active to getActiveElection.
- * This ensures the frontend receives ONE election object, not a list.
- */
+//This ensures the frontend receives ONE election object, not a list.
 router.get('/active', electionController.getActiveElection);
 
 /**

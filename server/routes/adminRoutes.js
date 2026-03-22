@@ -9,10 +9,10 @@ const adminMiddleware = require('../middleware/adminMiddleware');
 router.use(authMiddleware);
 router.use(adminMiddleware);
 
-// --- DASHBOARD STATS ---
+//  DASHBOARD STATS
 router.get('/stats', adminController.getDashboardStats);
 
-// --- VOTER REGISTRY (Master List) ---
+// VOTER REGISTRY (Master List)
 router.post('/registry/register', adminController.registerVoters);
 
 module.exports = router;
