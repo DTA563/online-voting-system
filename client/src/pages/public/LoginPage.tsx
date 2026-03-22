@@ -201,7 +201,6 @@ export function LoginPage() {
                     onChange={handleUserIdChange}
                     placeholder="CS_1234"
                     required
-                    autoFocus
                     className={`w-full pl-10 pr-3 py-3 bg-black/20 border rounded-lg focus:outline-none focus:ring-1 transition-all text-white placeholder-gray-700 hover:border-white/20 text-sm ${
                       userId && !isUserIdValid(userId)
                         ? 'border-red-500/50 focus:border-red-500/50 focus:ring-red-500/50'

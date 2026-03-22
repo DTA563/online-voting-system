@@ -327,7 +327,7 @@ export function ManageCandidatesPage() {
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 animate-pulse">
           {/* Left Column Skeleton */}
           <div className="lg:col-span-4 space-y-6">
-            <div className="h-[380px] bg-white/5 rounded-3xl border border-white/5"></div>
+            <div className="h-95 bg-white/5 rounded-3xl border border-white/5"></div>
           </div>
           {/* Right Column Skeleton */}
           <div className="lg:col-span-8 space-y-6">
