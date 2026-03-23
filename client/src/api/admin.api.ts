@@ -1,7 +1,7 @@
 import api from './axios';
 import { User } from '../types';
 
-//  Define the Stats interface based on your actual backend payload
+// Define the Stats interface based on your actual backend payload
 export interface DashboardStats {
   users: { by_role: Record<string, number>; pending: number };
   elections: { total: number; active: number; completed: number };
