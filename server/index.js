@@ -37,7 +37,7 @@ const PORT = process.env.PORT || 5001;
 const server = http.createServer(app);
 const io = new Server(server, {
     cors: {
-        origin: "*", // Update this to your React app's URL in production
+        origin: "https://smartballot.vercel.app/", // Update this to your React app's URL in production
         methods: ["GET", "POST", "PUT", "DELETE"]
     }
 });
