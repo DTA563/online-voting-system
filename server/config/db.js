@@ -19,7 +19,7 @@ const pool = mysql.createPool({
 
 const testConnection = async () => {
     try {
-        const [rows] = await promisePool.query('SELECT 1 + 1 AS result');
+        const [rows] = await pool.query('SELECT 1 + 1 AS result');
         console.log('✅ Database Connected Successfully');
     } catch (err) {
         console.error('❌ Database Connection Failed!');
