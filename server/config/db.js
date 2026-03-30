@@ -1,4 +1,4 @@
-const mysql = require('mysql2');
+const mysql = require('mysql2/promise');
 require('dotenv').config();
 
 const pool = mysql.createPool({
@@ -8,10 +8,14 @@ const pool = mysql.createPool({
     database: process.env.DB_NAME || 'voting_system',
     waitForConnections: true,
     connectionLimit: 10,
-    queueLimit: 0
+    queueLimit: 0,
+    port: process.env.DB_PORT || 3306, // Adds port support
+    ssl: {
+        rejectUnauthorized: false // Required for Aiven cloud connections
+    }
 });
 
-const promisePool = pool.promise();
+//const promisePool = pool.promise();
 
 const testConnection = async () => {
     try {
@@ -30,4 +34,4 @@ const testConnection = async () => {
 
 testConnection();
 
-module.exports = promisePool;
+module.exports = pool;
